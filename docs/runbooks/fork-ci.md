@@ -80,6 +80,16 @@ HTTP provider tests mock Docker initialization so tests cannot enable a local
 service. Packaging explicitly generates both YAML and RC schemas even when
 dependency installation is skipped, and the smoke checks their presence.
 
+The full local Jest audit reached 841 passing tests and identified three further
+fixture problems: shell-based Git setup that did not switch Windows drives,
+native paths supplied to a URI API, and another CRLF-delimited diff fixture.
+All three corrected suites pass (50 tests). The symlink capability failure remains
+required in CI. The Git fixture now uses argument arrays and an explicit temporary
+working directory. Test-created nested Git metadata under `core/.git` was preserved
+outside the checkout in `.build-tools/test-created-core-git-backup-20260922`; the
+main repository was not replaced or reset. The extension's 86 unit tests and the
+rebuilt Windows VSIX smoke also pass locally.
+
 ## Bootstrap and enforcement
 
 `fork-ci.yml` can validate its introducing PR. The privileged review workflow must
