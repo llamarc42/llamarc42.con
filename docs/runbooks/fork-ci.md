@@ -1,0 +1,74 @@
+# Fork CI bootstrap
+
+The accepted design is being introduced by the `tool-contract-ci` branch. Do not
+merge until Copilot has reviewed the current head and the validation results have
+been inspected. This document separates implemented checks from enforcement that
+still needs a successful bootstrap.
+
+## Implemented
+
+- A standalone JSON Schema 2020-12 tool manifest and strict validator/registry in
+  `packages/tool-contract`, with bounded definitions and no execution privileges.
+- Preflight validation, workflow syntax checking, static checks, full offline
+  desktop tests, and native VSIX packaging on three OS runners. The required
+  summary fails on any failed, cancelled, or unexpectedly skipped stage.
+- A packaged-extension smoke harness: isolated VS Code 1.95.0, synthetic workspace,
+  local scripted Ollama server, and actual list/read/answer continuation through
+  the bundled model and tool dispatcher. This does not test the new JSON loader,
+  which is a subsequent integration slice.
+- A metadata-only Copilot gate using trusted default-branch code. It checks the
+  current head, verified bot login/type, completed review state, and unresolved
+  review conversations. It does not run PR code with write credentials.
+- 31 inherited workflows preserved in `.github/upstream-workflows/`, outside
+  GitHub's active workflow directory. Publishing and upstream integrations are
+  not enabled by this change.
+
+## Runtime and test inventory
+
+The new workflow pins Node 22.22.0 to satisfy the observed build-tool engine floor
+of 22.12. Local reproduction with the existing Node 20 baseline is recorded
+separately; the new runtime's full matrix must pass before it is called validated.
+
+`core`: full Jest and Vitest suites. `gui`: full Vitest suite. `extensions/vscode`:
+full Vitest suite plus packaged-extension smoke. Shared packages: config-yaml
+Jest, terminal-security/fetch/openai-adapters Vitest, tool-contract Node tests.
+Config-types, llm-info, and continue-sdk have upstream no-op test scripts; only
+their available builds/type checks are evidence. Do not report those as tested.
+
+The existing `IGNORE_API_KEY_TESTS=true` branch excludes live provider tests from
+credential-free CI; openai-adapters' existing Vitest config also excludes its live
+test files. Existing skipped/todo tests are visible in runner summaries. This is
+offline coverage, not a claim of complete external-service validation. Tests may
+still reveal inherited network assumptions; classify and fix those explicitly.
+
+Preflight blocks changes under retained CLI, IntelliJ, binary, or Rust sync paths
+until a corresponding fork test lane is added. No required stages are skipped for
+documentation-only PRs in this first implementation.
+
+## Local audit findings
+
+The initial Windows core Jest audit passed 400 tests before failing on creation
+of a file symlink (`EPERM`) in `indexing/walkDir.test.ts`. This account lacks the
+required native capability; the test remains required on CI.
+
+The initial Windows core Vitest audit passed 110 tests before a Unix-only file URL
+fixture failed in `runTerminalCommand.vitest.ts`. The fixture now constructs a URL
+from a native temporary path with spaces. No platform skip was introduced.
+
+## Bootstrap and enforcement
+
+`fork-ci.yml` can validate its introducing PR. The privileged review workflow must
+not run from unmerged PR code, so it will become operational only after its trusted
+default-branch bootstrap. For that initial PR, verify Copilot's current-head review
+directly before requesting a merge. Do not manufacture a passing review status.
+
+Once bootstrapped, review metadata is refreshed after the Copilot workflow, PR
+head changes, manual dispatch, and a five-minute scheduled check. GitHub may delay
+scheduled runs. Dismissals/conversation changes can therefore have refresh latency;
+always recheck live review metadata immediately before an authorized merge.
+
+Configure required statuses `Fork CI required` and `Copilot review current head`
+only after the real checks have been exercised. Require PRs, resolved conversations,
+base-current validation, and no force push/deletion of main. Confirm missing/stale
+review and failed-platform cases actually block merge. Ruleset settings have not
+been changed by this implementation yet. No auto-merge is configured.

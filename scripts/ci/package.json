@@ -1,0 +1,11 @@
+{
+  "name": "llamarc42-ci-integration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "@vscode/test-electron": "2.5.2",
+    "adm-zip": "0.5.16",
+    "continue": "file:../.."
+  }
+}

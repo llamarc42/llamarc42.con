@@ -71,7 +71,8 @@ export async function activateExtension(context: vscode.ExtensionContext) {
 
   // 'export' public api-surface
   // or entire extension for testing
-  return process.env.NODE_ENV === "test"
+  return process.env.NODE_ENV === "test" ||
+    process.env.CONTINUE_TEST_API === "true"
     ? {
         ...continuePublicApi,
         extension: vscodeExtension,

@@ -2,7 +2,7 @@ import * as childProcess from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   afterAll,
   afterEach,
@@ -537,8 +537,8 @@ describe("runTerminalCommandImpl", () => {
       });
 
       it("should properly convert file:// URIs to paths", () => {
-        const fileUri = "file:///home/user/workspace";
-        const expectedPath = "/home/user/workspace";
+        const expectedPath = path.join(tempDir, "workspace with spaces");
+        const fileUri = pathToFileURL(expectedPath);
 
         // Test that fileURLToPath works correctly with file:// URIs
         expect(fileURLToPath(fileUri)).toBe(expectedPath);
