@@ -13,6 +13,65 @@ const workflow = YAML.parse(
 );
 const script = workflow.jobs.required.steps[0].with.script;
 const { assertTestReport, assertNodeSummary } = require("./test-results.cjs");
+const { validatePlatformMatrix } = require("./platform-matrix.cjs");
+
+test("actual workflow requires exactly the three supported platforms", () => {
+  assert.doesNotThrow(() => validatePlatformMatrix(workflow));
+});
+
+for (const [name, mutate] of [
+  ["missing OS", (w) => w.jobs.platform.strategy.matrix.os.pop()],
+  ["duplicate OS", (w) => w.jobs.platform.strategy.matrix.os.push("macos-14")],
+  [
+    "replaced OS",
+    (w) => {
+      w.jobs.platform.strategy.matrix.os[0] = "macos-14";
+    },
+  ],
+  [
+    "excluded OS",
+    (w) => {
+      w.jobs.platform.strategy.matrix.exclude = [{ os: "windows-2022" }];
+    },
+  ],
+  [
+    "included job",
+    (w) => {
+      w.jobs.platform.strategy.matrix.include = [{ os: "macos-14" }];
+    },
+  ],
+  [
+    "dynamic matrix",
+    (w) => {
+      w.jobs.platform.strategy.matrix =
+        "${{ fromJSON(needs.setup.outputs.matrix) }}";
+    },
+  ],
+  [
+    "fixed runner",
+    (w) => {
+      w.jobs.platform["runs-on"] = "ubuntu-24.04";
+    },
+  ],
+  [
+    "conditional platform",
+    (w) => {
+      w.jobs.platform.if = "false";
+    },
+  ],
+  [
+    "missing summary dependency",
+    (w) => {
+      w.jobs.required.needs = ["preflight", "static"];
+    },
+  ],
+]) {
+  test(`platform inventory rejects ${name}`, () => {
+    const candidate = structuredClone(workflow);
+    mutate(candidate);
+    assert.throws(() => validatePlatformMatrix(candidate));
+  });
+}
 
 test("test reports reject empty, skipped-only, failed, or missing inventories", () => {
   for (const report of [

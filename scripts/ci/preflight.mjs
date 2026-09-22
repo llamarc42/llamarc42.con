@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { parseManifest } from "../../packages/tool-contract/src/index.js";
 import lockfiles from "./lockfiles.cjs";
+import platformMatrix from "./platform-matrix.cjs";
 
 const require = createRequire(
   new URL("../../packages/tool-contract/package.json", import.meta.url),
@@ -62,6 +63,7 @@ for (const file of readdirSync(".github/workflows").filter((file) =>
   const workflow = doc.toJS();
   if (!workflow.on || !workflow.jobs)
     throw new Error(`${file}: missing workflow triggers/jobs`);
+  if (file === "fork-ci.yml") platformMatrix.validatePlatformMatrix(workflow);
 }
 for (const file of readdirSync("packages/tool-contract/fixtures")) {
   parseManifest(
