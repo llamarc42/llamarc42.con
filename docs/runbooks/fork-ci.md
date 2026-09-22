@@ -28,11 +28,15 @@ still needs a successful bootstrap.
 The new workflow pins Node 22.22.0 to satisfy the observed build-tool engine floor
 of 22.12. Local reproduction with the existing Node 20 baseline is recorded
 separately; the new runtime's full matrix must pass before it is called validated.
-Native builds pin Python 3.11.16 because the inherited SQLite/node-gyp toolchain
+Native builds pin Python 3.11.9 because the inherited SQLite/node-gyp toolchain
 still imports `distutils`, which newer Python runtimes removed. On Windows, the
 legacy POSIX quoting integration tests require Git for Windows' `bin/sh.exe` under
 Program Files. Those tests establish POSIX quoting behavior, not cmd.exe or
 PowerShell compatibility for legacy tools.
+This is the latest 3.11 binary release in the setup-python manifest shared by
+all configured platforms; later 3.11 entries are Linux-only. It is a build-time
+compatibility pin, not a shipped application runtime. Updating the inherited
+native toolchain is needed to move to a current Python feature series.
 
 `core`: full Jest and Vitest suites. `gui`: full Vitest suite. `extensions/vscode`:
 full Vitest suite plus packaged-extension smoke. Shared packages: config-yaml

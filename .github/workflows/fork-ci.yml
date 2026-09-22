@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: "**/package-lock.json"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: 3.11.16
+          python-version: 3.11.9
       - run: node scripts/ci/run.mjs install
       - run: node scripts/ci/run.mjs static
 
@@ -85,7 +85,7 @@ jobs:
         run: node -p "JSON.stringify({os:process.platform,arch:process.arch,node:process.version})"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: 3.11.16
+          python-version: 3.11.9
       - run: npm ci --prefix packages/tool-contract --no-audit --no-fund
       - run: npm test --prefix packages/tool-contract
       - run: node scripts/ci/run.mjs install
