@@ -128,6 +128,12 @@
           "default": false,
           "markdownDescription": "Pause Continue's codebase index on start."
         },
+        "continue.enableGitStatusTool": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "Enable the JSON-defined Git status tool. Requires Git and one workspace opened at a repository root. Uses the tool approval settings. Submodule changes are excluded in this first version. Reload the window after changing this setting."
+        },
         "continue.enableConsole": {
           "type": "boolean",
           "default": false,

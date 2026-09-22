@@ -12,9 +12,12 @@ exports.run = async function () {
   const model = config.selectedModelByRole.chat;
   assert.equal(model.model, "qwen3-coder:30b");
   const tools = config.tools.filter((tool) =>
-    ["ls", "read_file"].includes(tool.function.name),
+    ["ls", "read_file", "git_status"].includes(tool.function.name),
   );
-  assert.equal(tools.length, 2);
+  assert.equal(tools.length, 3);
+  const gitTool = tools.find((tool) => tool.function.name === "git_status");
+  assert.equal(gitTool.defaultToolPolicy, "allowedWithPermission");
+  assert.equal(gitTool.function.parameters.additionalProperties, false);
   const messages = [
     {
       role: "user",
@@ -24,7 +27,7 @@ exports.run = async function () {
   ];
   const called = [];
   let answer = "";
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < 4; round++) {
     const assistant = { role: "assistant", content: "", toolCalls: [] };
     for await (const chunk of model.streamChat(
       messages,
@@ -42,7 +45,10 @@ exports.run = async function () {
     }
     assert.equal(assistant.toolCalls.length, 1);
     const call = assistant.toolCalls[0];
-    assert.equal(call.function.name, ["ls", "read_file"][called.length]);
+    assert.equal(
+      call.function.name,
+      ["ls", "read_file", "git_status"][called.length],
+    );
     called.push(call.function.name);
     const result = await host.core.invoke("tools/call", { toolCall: call });
     assert.ok(!result.errorMessage, result.errorMessage);
@@ -52,6 +58,6 @@ exports.run = async function () {
       content: result.contextItems.map((item) => item.content).join("\n"),
     });
   }
-  assert.deepEqual(called, ["ls", "read_file"]);
+  assert.deepEqual(called, ["ls", "read_file", "git_status"]);
   assert.ok(answer.includes("L42-CI-CONTINUATION"));
 };

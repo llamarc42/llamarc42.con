@@ -690,6 +690,7 @@ class VsCodeIde implements IDE {
       ),
       userToken: settings.get<string>("userToken", ""),
       continueTestEnvironment: "production",
+      enableGitStatusTool: settings.get<boolean>("enableGitStatusTool", false),
       pauseCodebaseIndexOnStart: settings.get<boolean>(
         "pauseCodebaseIndexOnStart",
         false,
