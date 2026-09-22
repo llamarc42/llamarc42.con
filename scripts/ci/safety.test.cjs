@@ -49,6 +49,13 @@ function fixture({
   ci = "success",
   changed = false,
   summary = "success",
+  baseStatus = "ahead",
+  reviewRunStatus = "success",
+  missingJob,
+  duplicateJob,
+  jobFailure,
+  newerFailedRun = false,
+  changedBase = false,
 } = {}) {
   let calls = 0;
   let merges = 0;
@@ -66,9 +73,26 @@ function fixture({
     api: {
       get: async (endpoint) => {
         call();
+        if (endpoint.includes("/compare/"))
+          return {
+            status: baseStatus,
+            behind_by: baseStatus === "ahead" ? 0 : 1,
+            merge_base_commit: { sha: "base" },
+          };
         if (endpoint.includes("/actions/"))
           return {
             workflow_runs: [
+              ...(newerFailedRun
+                ? [
+                    {
+                      id: 11,
+                      event: "pull_request",
+                      head_sha: sha,
+                      status: "completed",
+                      conclusion: "failure",
+                    },
+                  ]
+                : []),
               {
                 id: 9,
                 event: "pull_request",
@@ -78,23 +102,51 @@ function fixture({
               },
             ],
           };
+        if (changedBase && calls > 1)
+          return { ...pr, base: { ...pr.base, sha: "new-base" } };
         return changed && calls > 1
           ? { ...pr, head: { sha: "b".repeat(40) } }
           : pr;
       },
       pages: async (endpoint, field) => {
         call();
+        if (field === "workflow_runs")
+          return [
+            {
+              id: 10,
+              head_sha: sha,
+              event: "dynamic",
+              path: "dynamic/agents/copilot-pull-request-reviewer",
+              status: "completed",
+              conclusion: reviewRunStatus,
+            },
+          ];
         if (field === "jobs") {
           assert.match(endpoint, /runs\/9\/jobs\?filter=latest/);
-          return summary === "missing"
-            ? []
-            : [
-                {
-                  name: "Fork CI required",
-                  status: "completed",
-                  conclusion: summary,
-                },
-              ];
+          return [
+            ...(duplicateJob ? [duplicateJob] : []),
+            "preflight",
+            "static",
+            "Platform (ubuntu-24.04)",
+            "Platform (windows-2022)",
+            "Platform (macos-14)",
+            "Fork CI required",
+          ]
+            .filter(
+              (name) =>
+                name !== missingJob &&
+                !(name === "Fork CI required" && summary === "missing"),
+            )
+            .map((name) => ({
+              name,
+              status: "completed",
+              conclusion:
+                name === jobFailure
+                  ? "failure"
+                  : name === "Fork CI required"
+                    ? summary
+                    : "success",
+            }));
         }
         return [
           {
@@ -119,7 +171,7 @@ function fixture({
     merges: () => merges,
   };
 }
-for (let failAt = 1; failAt <= 6; failAt++) {
+for (let failAt = 1; failAt <= 8; failAt++) {
   test(`API failure at read ${failAt} prevents merge despite any cached status`, async () => {
     const f = fixture({ failAt });
     await assert.rejects(mergeReviewed(options, f.api), /API unavailable/);
@@ -135,11 +187,42 @@ for (const [name, scenario] of [
   ["missing summary", { summary: "missing" }],
   ["failed summary", { summary: "failure" }],
   ["cancelled summary", { summary: "cancelled" }],
+  ["stale base before verification", { baseStatus: "diverged" }],
+  [
+    "cancelled Copilot run despite submitted review",
+    { reviewRunStatus: "cancelled" },
+  ],
+  [
+    "missing platform job despite successful summary",
+    { missingJob: "Platform (windows-2022)" },
+  ],
+  ["newer failed CI cannot use older green run", { newerFailedRun: true }],
+  ["base changes during verification", { changedBase: true }],
 ]) {
   test(`${name} prevents merge`, async () => {
     const f = fixture(scenario);
     await assert.rejects(mergeReviewed(options, f.api));
     assert.equal(f.merges(), 0);
+  });
+}
+for (const name of [
+  "preflight",
+  "static",
+  "Platform (ubuntu-24.04)",
+  "Platform (windows-2022)",
+  "Platform (macos-14)",
+  "Fork CI required",
+]) {
+  test(`merge requires one successful ${name}`, async () => {
+    for (const scenario of [
+      { missingJob: name },
+      { duplicateJob: name },
+      { jobFailure: name },
+    ]) {
+      const f = fixture(scenario);
+      await assert.rejects(mergeReviewed(options, f.api));
+      assert.equal(f.merges(), 0);
+    }
   });
 }
 test("verification is read-only unless merge is explicit", async () => {

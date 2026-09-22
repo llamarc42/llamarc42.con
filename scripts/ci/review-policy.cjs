@@ -24,6 +24,16 @@ function reviewDecision(head, reviews, unresolved) {
       state: "pending",
       description: "Resolve or disposition outstanding review conversations",
     };
+  if (
+    /couldn.t run.*review|didn.t start before the timeout/i.test(
+      review.body || "",
+    )
+  )
+    return {
+      state: "pending",
+      description:
+        "Copilot reported an incomplete review; request another review",
+    };
   return {
     state: "success",
     description: "Copilot reviewed current head; review conversations resolved",

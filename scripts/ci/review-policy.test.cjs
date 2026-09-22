@@ -20,6 +20,17 @@ for (const [name, reviews, unresolved, expected] of [
   ],
   ["pending submission", [{ ...review, submitted_at: null }], false, "pending"],
   [
+    "incomplete agent review",
+    [
+      {
+        ...review,
+        body: "Copilot couldn't run its full agentic review because it didn't start before the timeout.",
+      },
+    ],
+    false,
+    "pending",
+  ],
+  [
     "human impersonation",
     [{ ...review, user: { ...review.user, type: "User" } }],
     false,

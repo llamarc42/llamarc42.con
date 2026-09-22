@@ -29,6 +29,19 @@ async function mergeReviewed({ repo, number, sha, merge = false }, api) {
       throw new Error("Disable auto-merge before using the live merge guard");
   }
   checkPr(first);
+  // Conservative current-base rule: the reviewed head must already contain
+  // current main. API run.pull_requests metadata is mutable, not build provenance.
+  const comparison = await api.get(
+    `repos/${repo}/compare/${first.base.sha}...${sha}`,
+  );
+  if (
+    !["ahead", "identical"].includes(comparison.status) ||
+    comparison.behind_by !== 0 ||
+    comparison.merge_base_commit?.sha !== first.base.sha
+  )
+    throw new Error(
+      "PR head must contain current main; update the branch and rerun CI/review",
+    );
   const runs = await api.get(
     `repos/${repo}/actions/workflows/fork-ci.yml/runs?event=pull_request&head_sha=${sha}&per_page=100`,
   );
@@ -45,13 +58,42 @@ async function mergeReviewed({ repo, number, sha, merge = false }, api) {
     `repos/${repo}/actions/runs/${latest.id}/jobs?filter=latest&per_page=100`,
     "jobs",
   );
-  const summaries = jobs.filter((job) => job.name === "Fork CI required");
+  for (const name of [
+    "preflight",
+    "static",
+    "Platform (ubuntu-24.04)",
+    "Platform (windows-2022)",
+    "Platform (macos-14)",
+    "Fork CI required",
+  ]) {
+    const matches = jobs.filter((job) => job.name === name);
+    if (
+      matches.length !== 1 ||
+      matches[0].status !== "completed" ||
+      matches[0].conclusion !== "success"
+    )
+      throw new Error(`${name} must run and pass exactly once`);
+  }
+  const reviewRuns = await api.pages(
+    `repos/${repo}/actions/runs?head_sha=${sha}&per_page=100`,
+    "workflow_runs",
+  );
+  const reviewRun = reviewRuns
+    .filter(
+      (run) =>
+        run.head_sha === sha &&
+        run.event === "dynamic" &&
+        run.path === "dynamic/agents/copilot-pull-request-reviewer",
+    )
+    .sort((a, b) => b.id - a.id)[0];
   if (
-    summaries.length !== 1 ||
-    summaries[0].status !== "completed" ||
-    summaries[0].conclusion !== "success"
+    !reviewRun ||
+    reviewRun.status !== "completed" ||
+    reviewRun.conclusion !== "success"
   )
-    throw new Error("Fork CI required summary must run and pass");
+    throw new Error(
+      "Latest Copilot agent review run must complete successfully",
+    );
   const reviews = await api.pages(`${endpoint}/reviews?per_page=100`);
   const unresolved = await api.unresolved(repo, number);
   const decision = reviewDecision(sha, reviews, unresolved);

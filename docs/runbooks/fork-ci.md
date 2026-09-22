@@ -52,10 +52,13 @@ Jest, terminal-security/fetch/openai-adapters Vitest, tool-contract Node tests.
 Config-types, llm-info, and continue-sdk have upstream no-op test scripts; only
 their available builds/type checks are evidence. Do not report those as tested.
 
-The install steps supply the workflow's read-only GitHub token to ripgrep's
-postinstall downloader. This avoids anonymous API rate limits on shared runners;
-the pinned package/release and all test requirements remain unchanged. The token
-is scoped to install steps, with no added workflow write permissions.
+The install steps receive no GitHub token. Before installation, a built-in Node
+script downloads the existing pinned ripgrep release from its public asset URL,
+verifies a checked-in SHA-256 digest, and fills the locked package's download
+cache. This avoids the anonymous metadata API rate limit without exposing a
+credential to npm lifecycle scripts. Package/version changes require reviewing
+the asset pins. These digests were measured from the upstream HTTPS release;
+they are integrity pins, not independent upstream signatures.
 
 The existing `IGNORE_API_KEY_TESTS=true` branch excludes live provider tests from
 credential-free CI; openai-adapters' existing Vitest config also excludes its live
@@ -147,6 +150,11 @@ the latest Fork CI run for that head to pass, paginates current reviews and
 conversations, and rechecks the head and base before a squash merge with GitHub's
 expected-head SHA guard. Any failed API read aborts without issuing a merge.
 It never uses a previous commit status as authorization or queues auto-merge.
+It requires the reviewed head to contain current `main`, every expected CI job
+to complete successfully exactly once, and the latest current-head Copilot agent
+run to succeed. A timeout summary is insufficient. If the branch is behind main,
+update it and obtain fresh CI/review. Inspect the full review body as well as
+inline threads: summary-only findings still require a human or agent disposition.
 Regression tests inject failure at each metadata read and assert zero merge calls.
 Do not bypass a failed guard with a direct CLI/UI merge. This is the supported
 agent merge path, not a claim that GitHub's UI or administrators cannot bypass it.
