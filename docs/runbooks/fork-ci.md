@@ -28,6 +28,11 @@ still needs a successful bootstrap.
 The new workflow pins Node 22.22.0 to satisfy the observed build-tool engine floor
 of 22.12. Local reproduction with the existing Node 20 baseline is recorded
 separately; the new runtime's full matrix must pass before it is called validated.
+Native builds pin Python 3.11.16 because the inherited SQLite/node-gyp toolchain
+still imports `distutils`, which newer Python runtimes removed. On Windows, the
+legacy POSIX quoting integration tests require Git for Windows' `bin/sh.exe` under
+Program Files. Those tests establish POSIX quoting behavior, not cmd.exe or
+PowerShell compatibility for legacy tools.
 
 `core`: full Jest and Vitest suites. `gui`: full Vitest suite. `extensions/vscode`:
 full Vitest suite plus packaged-extension smoke. Shared packages: config-yaml
@@ -61,6 +66,15 @@ The bootstrap replaces those forwarding modules with direct imports and limits
 the MCP compatibility declaration to the symbols actually consumed. The rule
 remains enabled. The packaged Windows list/read/answer smoke passes locally;
 this is not three-platform proof.
+
+The complete Windows core audit also exposed native-path/URI confusion, CRLF
+fixture parsing, transient file locks, and a hard-coded POSIX shell. Fixes keep
+the assertions and use native paths, normalized fixture delimiters, isolated
+temporary directories, and bounded cleanup retries. Native terminal tests allow
+15 seconds for shell startup; production command-timeout tests remain separate.
+HTTP provider tests mock Docker initialization so tests cannot enable a local
+service. Packaging explicitly generates both YAML and RC schemas even when
+dependency installation is skipped, and the smoke checks their presence.
 
 ## Bootstrap and enforcement
 

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 export function run(command, args, cwd = process.cwd(), timeout = 1200000) {
@@ -99,6 +99,18 @@ if (task === "install") {
   }
   process.env.SKIP_INSTALLS = "true";
   process.env.CONTINUE_VSCODE_TARGET = target;
+  // SKIP_INSTALLS also bypasses upstream's schema generation. Generate from the
+  // already locked dependencies without invoking its additional npm install.
+  run(npm, ["run", "generate-schema"], resolve("packages/config-yaml"));
+  copyFileSync(
+    "packages/config-yaml/schema/config-yaml-schema.json",
+    "extensions/vscode/config-yaml-schema.json",
+  );
+  run(
+    process.execPath,
+    ["-e", "require('./scripts/generate-copy-config').generateRcSchema()"],
+    resolve("extensions/vscode"),
+  );
   run(npm, ["run", "build"], resolve("gui"));
   run(
     npm,

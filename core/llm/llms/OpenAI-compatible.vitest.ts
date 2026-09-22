@@ -400,6 +400,11 @@ createOpenAISubclassTests(Inception, {
   },
 });
 
+// These are HTTP contract tests; constructing the provider must not probe or
+// enable Docker Desktop on the developer's machine or CI runner.
+vi.spyOn(Docker.prototype as any, "ensureModelRunnerEnabled").mockResolvedValue(
+  undefined,
+);
 createOpenAISubclassTests(Docker, {
   providerName: "docker",
   defaultApiBase: "http://localhost:12434/engines/v1/",

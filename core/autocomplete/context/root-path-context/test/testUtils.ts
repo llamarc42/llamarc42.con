@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { expect, vi } from "vitest";
 
 import Parser from "web-tree-sitter";
@@ -54,11 +55,12 @@ export async function testRootPathContext(
     folderName,
   );
   const workspaceDir = (await ide.getWorkspaceDirs())[0];
-  const testFolderPath = path.join(workspaceDir, folderName);
-  fs.cpSync(folderPath, testFolderPath, {
-    recursive: true,
-    force: true,
-  });
+  const testFolderPath = path.join(fileURLToPath(workspaceDir), folderName);
+  // These fixtures are immutable. Recopying them for every cursor position can
+  // collide with transient Windows file handles from prior parser reads.
+  if (!fs.existsSync(testFolderPath)) {
+    fs.cpSync(folderPath, testFolderPath, { recursive: true });
+  }
 
   // Get results of root path context
   const startPath = path.join(testFolderPath, relativeFilepath);
@@ -67,13 +69,14 @@ export async function testRootPathContext(
     position,
   );
   const fileContents = prefix + suffix;
-  const ast = await getAst(startPath, fileContents);
+  const startUri = pathToFileURL(startPath).href;
+  const ast = await getAst(startUri, fileContents);
   if (!ast) {
     throw new Error("AST is undefined");
   }
 
   const treePath = await getTreePathAtCursor(ast, prefix.length);
-  await service.getContextForPath(startPath, treePath);
+  await service.getContextForPath(startUri, treePath);
 
   expect(getSnippetsMock).toHaveBeenCalledTimes(
     expectedDefinitionPositions.length,

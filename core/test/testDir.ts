@@ -4,19 +4,31 @@ import path from "path";
 import { localPathOrUriToPath, localPathToUri } from "../util/pathToUri";
 
 // Want this outside of the git repository so we can change branches in tests
-export const TEST_DIR_PATH = path.join(os.tmpdir(), "testWorkspaceDir");
+export const TEST_DIR_PATH = path.join(
+  os.tmpdir(),
+  `testWorkspaceDir-${process.pid}`,
+);
 export const TEST_DIR = localPathToUri(TEST_DIR_PATH); // URI
 
 export function setUpTestDir() {
   if (fs.existsSync(TEST_DIR_PATH)) {
-    fs.rmSync(TEST_DIR_PATH, { recursive: true });
+    // Windows scanners can briefly retain handles after a test closes files.
+    fs.rmSync(TEST_DIR_PATH, {
+      recursive: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   }
   fs.mkdirSync(TEST_DIR_PATH);
 }
 
 export function tearDownTestDir() {
   if (fs.existsSync(TEST_DIR_PATH)) {
-    fs.rmSync(TEST_DIR_PATH, { recursive: true });
+    fs.rmSync(TEST_DIR_PATH, {
+      recursive: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   }
 }
 

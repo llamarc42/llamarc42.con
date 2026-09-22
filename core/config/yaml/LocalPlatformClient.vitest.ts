@@ -9,6 +9,8 @@ import {
   vi,
 } from "vitest";
 import { IDE } from "../..";
+import { TEST_DIR } from "../../test/testDir";
+import FileSystemIde from "../../util/filesystem";
 import { LocalPlatformClient } from "./LocalPlatformClient";
 
 vi.mock("../../util/paths", { spy: true });
@@ -34,13 +36,10 @@ describe("LocalPlatformClient", () => {
   };
 
   let testIde: IDE;
-  beforeEach(
-    /**dynamic import before each test for test isolation */
-    async () => {
-      const testFixtures = await import("../../test/fixtures");
-      testIde = testFixtures.testIde;
-    },
-  );
+  beforeEach(() => {
+    // Each test needs an isolated IDE, not the fixture's live ConfigHandler.
+    testIde = new FileSystemIde(TEST_DIR);
+  });
 
   let secretValue: string;
   let envKeyValues: Record<string, unknown>;

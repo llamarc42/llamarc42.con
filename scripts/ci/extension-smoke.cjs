@@ -28,6 +28,9 @@ const AdmZip = require("adm-zip");
     "extension/package.json",
     "extension/out/extension.js",
     "extension/gui/index.html",
+    "extension/config-yaml-schema.json",
+    "extension/config_schema.json",
+    "extension/continue_rc_schema.json",
     "extension/out/build/Release/node_sqlite3.node",
   ]) {
     assert.ok(

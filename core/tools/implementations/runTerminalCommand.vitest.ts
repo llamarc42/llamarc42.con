@@ -21,6 +21,10 @@ import { runTerminalCommandImpl } from "./runTerminalCommand";
 vi.unmock("node:child_process");
 vi.unmock("node:util");
 
+// Real shell startup can exceed five seconds on loaded Windows hosts. This
+// bounds the harness only; production command timeouts have separate tests.
+vi.setConfig({ testTimeout: 15_000 });
+
 describe("runTerminalCommandImpl", () => {
   // Setup mocks and spies
   const mockGetIdeInfo = vi.fn();
