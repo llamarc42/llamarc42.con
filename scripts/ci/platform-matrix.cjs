@@ -64,6 +64,11 @@ function validatePlatformMatrix(workflow) {
     }
   }
   const platform = workflow.jobs?.platform;
+  assert.equal(
+    platform.strategy?.["fail-fast"],
+    true,
+    "Platform matrix must explicitly fail fast",
+  );
   const matrix = platform?.strategy?.matrix;
   assert.ok(matrix && typeof matrix === "object", "Missing platform matrix");
   // Reject extra axes and include/exclude rules: they can change the expanded

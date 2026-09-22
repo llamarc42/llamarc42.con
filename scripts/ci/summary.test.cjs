@@ -74,6 +74,17 @@ test("actual workflow requires exactly the three supported platforms", () => {
   assert.doesNotThrow(() => validatePlatformMatrix(workflow));
 });
 
+test("platform matrix requires literal fail-fast true", () => {
+  for (const value of [false, undefined, "${{ true }}"]) {
+    const candidate = structuredClone(workflow);
+    candidate.jobs.platform.strategy["fail-fast"] = value;
+    assert.throws(
+      () => validatePlatformMatrix(candidate),
+      /must explicitly fail fast/,
+    );
+  }
+});
+
 for (const name of ["preflight", "static", "platform"]) {
   test(`${name} rejects ignored job failures`, () => {
     for (const value of [true, "${{ true }}"]) {
