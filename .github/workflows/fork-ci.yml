@@ -30,7 +30,11 @@ jobs:
         with:
           node-version: 22.22.0
           cache: npm
-          cache-dependency-path: packages/tool-contract/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            packages/tool-contract/package-lock.json
+      - name: Install repository formatter dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix packages/tool-contract --no-audit --no-fund
       - run: node scripts/ci/preflight.mjs
         env:
