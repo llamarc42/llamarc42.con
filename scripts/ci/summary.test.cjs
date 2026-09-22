@@ -13,7 +13,62 @@ const workflow = YAML.parse(
 );
 const script = workflow.jobs.required.steps[0].with.script;
 const { assertTestReport, assertNodeSummary } = require("./test-results.cjs");
-const { validatePlatformMatrix } = require("./platform-matrix.cjs");
+const {
+  validatePlatformMatrix,
+  validateRequiredWorkflow,
+} = require("./platform-matrix.cjs");
+
+test("required workflow cannot be missing or renamed", (t) => {
+  const root = fs.mkdtempSync(
+    path.join(require("node:os").tmpdir(), "llamarc42-workflow-"),
+  );
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const directory = path.join(root, ".github/workflows");
+  fs.mkdirSync(directory, { recursive: true });
+  const file = path.join(directory, "fork-ci.yml");
+  const validate = () =>
+    validateRequiredWorkflow(root, (source) => YAML.parse(source));
+  assert.throws(validate, /ENOENT/);
+  fs.writeFileSync(file, YAML.stringify(workflow));
+  assert.doesNotThrow(validate);
+  fs.renameSync(file, path.join(directory, "renamed.yml"));
+  assert.throws(validate, /ENOENT/);
+});
+
+for (const name of ["preflight", "static", "platform"]) {
+  test(`${name} rejects empty stages and conditional steps`, () => {
+    const empty = structuredClone(workflow);
+    empty.jobs[name].steps = [];
+    assert.throws(() => validatePlatformMatrix(empty), /cannot be empty/);
+    for (let index = 0; index < workflow.jobs[name].steps.length; index++) {
+      for (const condition of [false, "false", "${{ false }}", "success()"]) {
+        const candidate = structuredClone(workflow);
+        candidate.jobs[name].steps[index].if = condition;
+        assert.throws(
+          () => validatePlatformMatrix(candidate),
+          /unsupported condition/,
+        );
+      }
+    }
+  });
+}
+
+test("required lint, test, packaging and smoke commands cannot be removed", () => {
+  for (const [stage, command] of [
+    ["preflight", "node scripts/ci/preflight.mjs"],
+    ["static", "node scripts/ci/run.mjs static"],
+    ["platform", "node scripts/ci/run.mjs tests"],
+    ["platform", "node scripts/ci/run.mjs package"],
+    ["platform", "xvfb-run -a node scripts/ci/extension-smoke.cjs"],
+    ["platform", "node scripts/ci/extension-smoke.cjs"],
+  ]) {
+    const candidate = structuredClone(workflow);
+    candidate.jobs[stage].steps = candidate.jobs[stage].steps.filter(
+      (step) => step.run !== command,
+    );
+    assert.throws(() => validatePlatformMatrix(candidate), /exactly once/);
+  }
+});
 
 test("actual workflow requires exactly the three supported platforms", () => {
   assert.doesNotThrow(() => validatePlatformMatrix(workflow));

@@ -10,6 +10,9 @@ const require = createRequire(
   new URL("../../packages/tool-contract/package.json", import.meta.url),
 );
 const YAML = require("yaml");
+platformMatrix.validateRequiredWorkflow(process.cwd(), (source) =>
+  YAML.parse(source),
+);
 const base = process.env.CI_BASE_SHA;
 if (!base || !/^[a-f0-9]{40}$/.test(base))
   throw new Error("CI_BASE_SHA must be a full commit SHA");
@@ -63,7 +66,6 @@ for (const file of readdirSync(".github/workflows").filter((file) =>
   const workflow = doc.toJS();
   if (!workflow.on || !workflow.jobs)
     throw new Error(`${file}: missing workflow triggers/jobs`);
-  if (file === "fork-ci.yml") platformMatrix.validatePlatformMatrix(workflow);
 }
 for (const file of readdirSync("packages/tool-contract/fixtures")) {
   parseManifest(

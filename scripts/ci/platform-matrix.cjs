@@ -1,9 +1,57 @@
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { resolve } = require("node:path");
+
+function validateRequiredWorkflow(root, parse) {
+  // Read the fixed contract directly: a rename/deletion must fail, not silently
+  // evade validation while other workflows are enumerated.
+  const workflow = parse(
+    readFileSync(resolve(root, ".github/workflows/fork-ci.yml"), "utf8"),
+  );
+  validatePlatformMatrix(workflow);
+}
+
+const smokeConditions = new Map([
+  ["xvfb-run -a node scripts/ci/extension-smoke.cjs", "runner.os == 'Linux'"],
+  ["node scripts/ci/extension-smoke.cjs", "runner.os != 'Linux'"],
+]);
+const requiredCommands = {
+  preflight: [
+    "node scripts/ci/preflight.mjs",
+    "npm test --prefix packages/tool-contract",
+  ],
+  static: ["node scripts/ci/run.mjs install", "node scripts/ci/run.mjs static"],
+  platform: [
+    "npm test --prefix packages/tool-contract",
+    "node scripts/ci/run.mjs install",
+    "node scripts/ci/run.mjs tests",
+    "node scripts/ci/run.mjs package",
+    ...smokeConditions.keys(),
+  ],
+};
 
 function validatePlatformMatrix(workflow) {
   for (const name of ["preflight", "static", "platform"]) {
     const job = workflow.jobs?.[name];
     assert.ok(job && Array.isArray(job.steps), `Missing ${name} stage steps`);
+    assert.ok(job.steps.length > 0, `${name} stage cannot be empty`);
+    assert.equal(job.if, undefined, `${name} stage cannot be conditional`);
+    for (const step of job.steps) {
+      const allowedCondition =
+        name === "platform" ? smokeConditions.get(step.run) : undefined;
+      assert.equal(
+        step.if,
+        allowedCondition,
+        `${name} step has an unsupported condition`,
+      );
+    }
+    for (const command of requiredCommands[name]) {
+      assert.equal(
+        job.steps.filter((step) => step.run === command).length,
+        1,
+        `${name} must run ${command} exactly once`,
+      );
+    }
     for (const [label, item] of [
       [name, job],
       ...job.steps.map((step, index) => [`${name} step ${index + 1}`, step]),
@@ -81,4 +129,4 @@ function validatePlatformMatrix(workflow) {
   );
 }
 
-module.exports = { validatePlatformMatrix };
+module.exports = { validatePlatformMatrix, validateRequiredWorkflow };
