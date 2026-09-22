@@ -32,7 +32,7 @@ import FileIcon from "../../FileIcon";
 import SafeImg from "../../SafeImg";
 import AddDocsDialog from "../../dialogs/AddDocsDialog";
 import HeaderButtonWithToolTip from "../../gui/HeaderButtonWithToolTip";
-import { Button } from "../../ui";
+import { Button } from "../../ui/Button";
 import { NAMED_ICONS } from "../icons";
 import type { ComboBoxItem, ComboBoxItemType } from "../types";
 

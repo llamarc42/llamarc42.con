@@ -88,48 +88,53 @@ void (async () => {
 
   process.chdir(path.join(continueDir, "gui"));
 
-  // Copy over the dist folder to the JetBrains extension //
-  const intellijExtensionWebviewPath = path.join(
-    "..",
-    "extensions",
-    "intellij",
-    "src",
-    "main",
-    "resources",
-    "webview",
-  );
+  // Desktop-only CI does not need to mutate the retained JetBrains resources.
+  if (process.env.SKIP_JETBRAINS_COPY !== "true") {
+    // Copy over the dist folder to the JetBrains extension //
+    const intellijExtensionWebviewPath = path.join(
+      "..",
+      "extensions",
+      "intellij",
+      "src",
+      "main",
+      "resources",
+      "webview",
+    );
 
-  const indexHtmlPath = path.join(intellijExtensionWebviewPath, "index.html");
-  fs.copyFileSync(indexHtmlPath, "tmp_index.html");
-  rimrafSync(intellijExtensionWebviewPath);
-  fs.mkdirSync(intellijExtensionWebviewPath, { recursive: true });
+    const indexHtmlPath = path.join(intellijExtensionWebviewPath, "index.html");
+    fs.copyFileSync(indexHtmlPath, "tmp_index.html");
+    rimrafSync(intellijExtensionWebviewPath);
+    fs.mkdirSync(intellijExtensionWebviewPath, { recursive: true });
 
-  const jetbrainsCopyStart = Date.now();
-  console.log(`[timer] Starting JetBrains copy at ${new Date().toISOString()}`);
-  await new Promise((resolve, reject) => {
-    ncp("dist", intellijExtensionWebviewPath, (error) => {
-      if (error) {
-        console.warn(
-          "[error] Error copying React app build to JetBrains extension: ",
-          error,
-        );
-        reject(error);
-      }
-      resolve();
+    const jetbrainsCopyStart = Date.now();
+    console.log(
+      `[timer] Starting JetBrains copy at ${new Date().toISOString()}`,
+    );
+    await new Promise((resolve, reject) => {
+      ncp("dist", intellijExtensionWebviewPath, (error) => {
+        if (error) {
+          console.warn(
+            "[error] Error copying React app build to JetBrains extension: ",
+            error,
+          );
+          reject(error);
+        }
+        resolve();
+      });
     });
-  });
-  console.log(
-    `[timer] JetBrains copy completed in ${Date.now() - jetbrainsCopyStart}ms`,
-  );
+    console.log(
+      `[timer] JetBrains copy completed in ${Date.now() - jetbrainsCopyStart}ms`,
+    );
 
-  // Put back index.html
-  if (fs.existsSync(indexHtmlPath)) {
-    rimrafSync(indexHtmlPath);
+    // Put back index.html
+    if (fs.existsSync(indexHtmlPath)) {
+      rimrafSync(indexHtmlPath);
+    }
+    fs.copyFileSync("tmp_index.html", indexHtmlPath);
+    fs.unlinkSync("tmp_index.html");
+
+    console.log("[info] Copied gui build to JetBrains extension");
   }
-  fs.copyFileSync("tmp_index.html", indexHtmlPath);
-  fs.unlinkSync("tmp_index.html");
-
-  console.log("[info] Copied gui build to JetBrains extension");
 
   // Then copy over the dist folder to the VSCode extension //
   const vscodeGuiPath = path.join("../extensions/vscode/gui");

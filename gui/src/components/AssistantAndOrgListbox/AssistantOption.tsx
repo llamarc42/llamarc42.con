@@ -10,7 +10,9 @@ import { useAppDispatch } from "../../redux/hooks";
 import { setSelectedProfile } from "../../redux/slices/profilesSlice";
 import { CONFIG_ROUTES } from "../../util/navigation";
 import { ToolTip } from "../gui/Tooltip";
-import { Button, ListboxOption, useFontSize } from "../ui";
+import { Button } from "../ui/Button";
+import { ListboxOption } from "../ui/Listbox";
+import { useFontSize } from "../ui/font";
 import { AssistantIcon } from "./AssistantIcon";
 
 interface AssistantOptionProps {

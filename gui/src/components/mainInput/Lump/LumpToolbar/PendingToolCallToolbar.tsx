@@ -3,8 +3,8 @@ import { selectPendingToolCalls } from "../../../../redux/selectors/selectToolCa
 import { callToolById } from "../../../../redux/thunks/callToolById";
 import { cancelToolCallThunk } from "../../../../redux/thunks/cancelToolCall";
 import { getAltKeyLabel, getMetaKeyLabel, isJetBrains } from "../../../../util";
-import { Button } from "../../../ui";
-import { useMainEditor } from "../../TipTapEditor";
+import { Button } from "../../../ui/Button";
+import { useMainEditor } from "../../TipTapEditor/MainEditorProvider";
 
 export const generateToolCallButtonTestId = (
   action: "accept" | "reject",

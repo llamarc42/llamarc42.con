@@ -22,8 +22,7 @@ async function generateConfigYamlSchema() {
   console.log("[info] Generated config.yaml schema");
 }
 
-async function copyConfigSchema() {
-  process.chdir(path.join(continueDir, "extensions", "vscode"));
+function generateRcSchema() {
   // Modify and copy for .continuerc.json
   const schema = JSON.parse(fs.readFileSync("config_schema.json", "utf8"));
   schema.$defs.SerializedContinueConfig.properties.mergeBehavior = {
@@ -37,6 +36,11 @@ async function copyConfigSchema() {
       "<p>If set to <code>merge</code>, <code>.continuerc.json</code> will be applied on top of <code>config.json</code> (arrays and objects are merged). If set to <code>overwrite</code>, then every top-level property of <code>.continuerc.json</code> will overwrite that property from <code>config.json</code>.</p>",
   };
   fs.writeFileSync("continue_rc_schema.json", JSON.stringify(schema, null, 2));
+}
+
+async function copyConfigSchema() {
+  process.chdir(path.join(continueDir, "extensions", "vscode"));
+  generateRcSchema();
 
   // Copy config schemas to intellij
   fs.copyFileSync(
@@ -123,4 +127,5 @@ async function generateAndCopyConfigYamlSchema() {
 
 module.exports = {
   generateAndCopyConfigYamlSchema,
+  generateRcSchema,
 };

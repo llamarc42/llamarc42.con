@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalizeRepoUrl } from "./repoUrl";
 import { sanitizeShellArgument, validateGitHubRepoUrl } from "./sanitization";
@@ -175,19 +176,25 @@ describe("validateGitHubRepoUrl", () => {
  * that sanitization transforms inputs, but only these integration tests prove
  * that the transformed output is safe when executed in a real shell.
  */
-describe("sanitizeShellArgument - integration tests", () => {
+describe("sanitizeShellArgument - POSIX shell integration tests", () => {
+  // shell-quote targets POSIX syntax. Git for Windows supplies the same shell
+  // semantics on Windows; a missing shell must fail, not become empty output.
+  const shell =
+    process.platform === "win32"
+      ? join(
+          process.env.ProgramFiles || "C:\\Program Files",
+          "Git",
+          "bin",
+          "sh.exe",
+        )
+      : "/bin/sh";
   // Helper function to safely execute a command with a timeout
   const safeExec = (command: string): string => {
-    try {
-      return execSync(command, {
-        encoding: "utf-8",
-        timeout: 5000, // 5 second timeout to prevent hanging
-        shell: "/bin/sh", // Use standard POSIX shell
-      }).trim();
-    } catch (error: any) {
-      // If command fails (non-zero exit), return the error output
-      return error.stdout?.trim() || "";
-    }
+    return execSync(command, {
+      encoding: "utf-8",
+      timeout: 5000, // 5 second timeout to prevent hanging
+      shell,
+    }).trim();
   };
 
   it("should prevent command injection with semicolon separator", () => {

@@ -12,13 +12,11 @@ import { setSelectedProfile } from "../../redux/slices/profilesSlice";
 import { getMetaKeyLabel, isMetaEquivalentKeyPressed } from "../../util";
 import { cn } from "../../util/cn";
 import { CONFIG_ROUTES } from "../../util/navigation";
-import {
-  Button,
-  Listbox,
-  ListboxOptions,
-  Transition,
-  useFontSize,
-} from "../ui";
+import { Button } from "../ui/Button";
+import { Listbox } from "@headlessui/react";
+import { ListboxOptions } from "../ui/Listbox";
+import { Transition } from "../ui/Transition";
+import { useFontSize } from "../ui/font";
 import { AssistantOptions } from "./AssistantOptions";
 import { SelectedAssistantButton } from "./SelectedAssistantButton";
 

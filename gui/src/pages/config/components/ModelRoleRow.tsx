@@ -3,7 +3,7 @@ import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { ModelDescription } from "core";
 import { ReactNode } from "react";
 import { ToolTip } from "../../../components/gui/Tooltip";
-import { Button } from "../../../components/ui";
+import { Button } from "../../../components/ui/Button";
 import ModelRoleSelector from "./ModelRoleSelector";
 
 interface ModelRoleRowProps {

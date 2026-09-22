@@ -2,7 +2,6 @@ import {
   ListboxButton as HLButton,
   ListboxOption as HLOption,
   ListboxOptions as HLOptions,
-  Listbox,
 } from "@headlessui/react";
 import * as React from "react";
 import { defaultBorderRadius, vscCommandCenterInactiveBorder } from "..";
@@ -87,4 +86,4 @@ const ListboxOption = React.forwardRef<HTMLLIElement, ListboxOptionProps>(
   },
 );
 
-export { Listbox, ListboxButton, ListboxOption, ListboxOptions };
+export { ListboxButton, ListboxOption, ListboxOptions };

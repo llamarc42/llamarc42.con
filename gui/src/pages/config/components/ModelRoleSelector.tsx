@@ -8,13 +8,11 @@ import { LLMConfigurationStatuses } from "core/llm/constants";
 import { MouseEvent, ReactNode, useContext } from "react";
 import { defaultBorderRadius } from "../../../components";
 import InfoHover from "../../../components/InfoHover";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  Transition,
-} from "../../../components/ui";
+import { Listbox } from "@headlessui/react";
+import { ListboxButton } from "../../../components/ui/Listbox";
+import { ListboxOption } from "../../../components/ui/Listbox";
+import { ListboxOptions } from "../../../components/ui/Listbox";
+import { Transition } from "../../../components/ui/Transition";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { fontSize } from "../../../util";
 

@@ -1,0 +1,21 @@
+{
+  "name": "@llamarc42/tool-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.js",
+  "engines": {
+    "node": ">=20.20.1"
+  },
+  "scripts": {
+    "test": "node ../../scripts/ci/node-tests.cjs 17 test/contract.test.js",
+    "build": "node --check src/index.js"
+  },
+  "dependencies": {
+    "ajv": "8.17.1"
+  },
+  "devDependencies": {
+    "prettier": "3.3.3",
+    "yaml": "2.8.1"
+  }
+}

@@ -1,0 +1,134 @@
+name: Fork CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  HUSKY: "0"
+  PUPPETEER_SKIP_DOWNLOAD: "true"
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/tool-contract/package-lock.json
+      - name: Install repository formatter dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix packages/tool-contract --no-audit --no-fund
+      - run: node scripts/ci/preflight.mjs
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      - name: Validate workflow expressions and job structure
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes= .github/workflows/fork-ci.yml .github/workflows/copilot-review-gate.yml .github/workflows/review-metadata-changed.yml
+      - run: npm test --prefix packages/tool-contract
+      - run: node scripts/ci/node-tests.cjs 64 scripts/ci/review-policy.test.cjs scripts/ci/summary.test.cjs scripts/ci/safety.test.cjs scripts/ci/audit.test.cjs
+
+  static:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: 3.11.9
+      - run: node scripts/ci/prepare-ripgrep.cjs
+      - run: node scripts/ci/run.mjs install
+      - run: node scripts/ci/run.mjs static
+
+  platform:
+    name: Platform (${{ matrix.os }})
+    needs: static
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
+      - name: Record runtime and architecture
+        run: node -p "JSON.stringify({os:process.platform,arch:process.arch,node:process.version})"
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: 3.11.9
+      - run: npm ci --prefix packages/tool-contract --no-audit --no-fund
+      - run: npm test --prefix packages/tool-contract
+      - run: node scripts/ci/prepare-ripgrep.cjs
+      - run: node scripts/ci/run.mjs install
+      - run: node scripts/ci/run.mjs tests
+      - run: node scripts/ci/run.mjs package
+      - run: npm ci --prefix scripts/ci --no-audit --no-fund
+      - name: Packaged extension smoke (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node scripts/ci/extension-smoke.cjs
+      - name: Packaged extension smoke (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: node scripts/ci/extension-smoke.cjs
+      - name: Preserve test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: "**/.ci-test-results-*/results.json"
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: vsix-${{ matrix.os }}
+          path: extensions/vscode/build/*.vsix
+          if-no-files-found: error
+          retention-days: 7
+
+  required:
+    name: Fork CI required
+    if: always()
+    needs: [preflight, static, platform]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        with:
+          script: |
+            const results = JSON.parse(process.env.JOB_RESULTS);
+            for (const job of ['preflight', 'static', 'platform']) {
+              if (results[job]?.result !== 'success') core.setFailed(`${job} did not pass`);
+            }

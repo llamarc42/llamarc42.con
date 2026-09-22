@@ -15,7 +15,7 @@ vi.mock("../../../redux/hooks", () => ({
   useAppSelector: vi.fn(),
 }));
 
-vi.mock("../../../components/ui", () => ({
+vi.mock("../../../components/ui/font", () => ({
   useFontSize: () => 14,
 }));
 

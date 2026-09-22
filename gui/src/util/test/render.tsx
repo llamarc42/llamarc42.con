@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { PropsWithChildren } from "react";
 import { Provider } from "react-redux";
 import { MemoryRouter, RouterProps } from "react-router-dom";
-import { MainEditorProvider } from "../../components/mainInput/TipTapEditor";
+import { MainEditorProvider } from "../../components/mainInput/TipTapEditor/MainEditorProvider";
 import { AuthProvider } from "../../context/Auth";
 import { IdeMessengerProvider } from "../../context/IdeMessenger";
 import { MockIdeMessenger } from "../../context/MockIdeMessenger";

@@ -1,4 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   InternalSseMcpOptions,
@@ -165,13 +167,14 @@ describe("MCPConnection", () => {
 
     it("should resolve relative cwd using IDE workspace", async () => {
       const ide = {} as any;
+      const workspacePath = resolve("workspace with spaces", "src");
       const mockResolve = vi
         .spyOn(ideUtils, "resolveRelativePathInDir")
-        .mockResolvedValue("file:///workspace/src");
+        .mockResolvedValue(pathToFileURL(workspacePath).href);
       const conn = new MCPConnection(baseOptions, { ide });
 
       await expect((conn as any).resolveCwd("src")).resolves.toBe(
-        "/workspace/src",
+        workspacePath,
       );
       expect(mockResolve).toHaveBeenCalledWith("src", ide);
     });

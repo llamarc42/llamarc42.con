@@ -1,5 +1,5 @@
-import { ConversationStarterCards } from "../../components/ConversationStarters";
-import { OnboardingCard } from "../../components/OnboardingCard";
+import { ConversationStarterCards } from "../../components/ConversationStarters/ConversationStarterCards";
+import { OnboardingCard } from "../../components/OnboardingCard/OnboardingCard";
 
 export interface EmptyChatBodyProps {
   showOnboardingCard?: boolean;

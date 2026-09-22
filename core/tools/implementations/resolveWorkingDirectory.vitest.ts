@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /**
  * Test suite for workspace directory resolution logic.
@@ -100,16 +101,20 @@ describe("resolveWorkingDirectory", () => {
   });
 
   describe("file:// URIs (local workspaces)", () => {
-    it("should parse basic file:// URI on Unix", () => {
-      const result = resolveWorkingDirectory(["file:///home/user/project"]);
-      expect(result).toBe("/home/user/project");
+    it("should parse a native file:// URI", () => {
+      const workspacePath = resolve("workspace", "project");
+      const result = resolveWorkingDirectory([
+        pathToFileURL(workspacePath).href,
+      ]);
+      expect(result).toBe(workspacePath);
     });
 
     it("should decode URL-encoded spaces in file:// URI", () => {
+      const workspacePath = resolve("workspace", "my project");
       const result = resolveWorkingDirectory([
-        "file:///home/user/my%20project",
+        pathToFileURL(workspacePath).href,
       ]);
-      expect(result).toBe("/home/user/my project");
+      expect(result).toBe(workspacePath);
     });
 
     it("should handle Windows-style file:// URI", () => {
@@ -183,14 +188,15 @@ describe("resolveWorkingDirectory", () => {
   });
 
   describe("comparison with fileURLToPath behavior", () => {
-    it("should match fileURLToPath decoding for equivalent paths", () => {
-      const fileResult = fileURLToPath("file:///home/user/my%20project");
+    it("should decode spaces in native file URLs and WSL paths", () => {
+      const workspacePath = resolve("workspace", "my project");
+      const fileResult = fileURLToPath(pathToFileURL(workspacePath));
       const wslResult = resolveWorkingDirectory([
         "vscode-remote://wsl+Ubuntu/home/user/my%20project",
       ]);
 
       // Both should decode %20 to space
-      expect(fileResult).toBe("/home/user/my project");
+      expect(fileResult).toBe(workspacePath);
       expect(wslResult).toBe("/home/user/my project");
     });
   });

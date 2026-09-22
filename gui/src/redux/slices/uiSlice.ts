@@ -2,10 +2,8 @@ import { ToolPolicy } from "@continuedev/terminal-security";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RuleWithSource, Tool } from "core";
 import { BUILT_IN_GROUP_NAME } from "core/tools/builtIn";
-import {
-  defaultOnboardingCardState,
-  OnboardingCardState,
-} from "../../components/OnboardingCard";
+import { defaultOnboardingCardState } from "../../components/OnboardingCard/utils";
+import { OnboardingCardState } from "../../components/OnboardingCard/OnboardingCard";
 import { getLocalStorage, LocalStorageKey } from "../../util/localStorage";
 
 export type RulePolicy = "on" | "off";

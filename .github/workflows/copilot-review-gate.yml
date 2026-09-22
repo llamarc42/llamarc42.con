@@ -1,0 +1,63 @@
+name: Copilot review gate
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_run:
+    workflows: [Copilot, Running Copilot Code Review, Review metadata changed]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: copilot-review-metadata
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # Only trusted default-branch code. Never check out or execute PR code here.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { reviewDecision } = require('./scripts/ci/review-policy.cjs');
+            const { owner, repo } = context.repo;
+            const prs = await github.paginate(github.rest.pulls.list, {owner, repo, base: 'main', state: 'open', per_page: 100});
+            for (const pr of prs) {
+              const sha = pr.head.sha;
+              let decision = {state: 'pending', description: 'Unable to verify current Copilot review'};
+              try {
+                const reviews = await github.paginate(github.rest.pulls.listReviews, {owner, repo, pull_number: pr.number, per_page: 100});
+                let cursor = null, unresolved = false;
+                do {
+                  const result = await github.graphql(`query($owner:String!,$repo:String!,$number:Int!,$cursor:String) {
+                    repository(owner:$owner,name:$repo) { pullRequest(number:$number) {
+                      reviewThreads(first:100,after:$cursor) { nodes { isResolved } pageInfo {hasNextPage endCursor} }
+                    } }
+                  }`, {owner, repo, number: pr.number, cursor});
+                  const threads = result.repository.pullRequest.reviewThreads;
+                  unresolved ||= threads.nodes.some(thread => !thread.isResolved);
+                  cursor = threads.pageInfo.hasNextPage ? threads.pageInfo.endCursor : null;
+                } while (cursor);
+                decision = reviewDecision(sha, reviews, unresolved);
+              } catch (error) { core.warning(`PR ${pr.number}: review verification failed`); }
+              const current = await github.rest.pulls.get({owner, repo, pull_number: pr.number});
+              if (current.data.head.sha !== sha || current.data.state !== 'open') continue;
+              const previous = await github.rest.repos.getCombinedStatusForRef({owner, repo, ref: sha});
+              const existing = previous.data.statuses.find(s => s.context === 'Copilot review current head');
+              if (existing?.state === decision.state && existing?.description === decision.description) continue;
+              await github.rest.repos.createCommitStatus({owner, repo, sha, context: 'Copilot review current head', ...decision, target_url: pr.html_url});
+            }

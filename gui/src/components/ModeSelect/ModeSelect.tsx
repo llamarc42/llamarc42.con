@@ -12,8 +12,11 @@ import { selectSelectedChatModel } from "../../redux/slices/configSlice";
 import { setMode } from "../../redux/slices/sessionSlice";
 import { getFontSize, getMetaKeyLabel } from "../../util";
 import { ToolTip } from "../gui/Tooltip";
-import { useMainEditor } from "../mainInput/TipTapEditor";
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "../ui";
+import { useMainEditor } from "../mainInput/TipTapEditor/MainEditorProvider";
+import { Listbox } from "@headlessui/react";
+import { ListboxButton } from "../ui/Listbox";
+import { ListboxOption } from "../ui/Listbox";
+import { ListboxOptions } from "../ui/Listbox";
 import { ModeIcon } from "./ModeIcon";
 
 export function ModeSelect() {

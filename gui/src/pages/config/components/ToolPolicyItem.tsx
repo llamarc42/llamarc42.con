@@ -10,12 +10,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Tooltip } from "react-tooltip";
 import { ToolTip } from "../../../components/gui/Tooltip";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from "../../../components/ui";
+import { Listbox } from "@headlessui/react";
+import { ListboxButton } from "../../../components/ui/Listbox";
+import { ListboxOption } from "../../../components/ui/Listbox";
+import { ListboxOptions } from "../../../components/ui/Listbox";
 import { useFontSize } from "../../../components/ui/font";
 import { useAppSelector } from "../../../redux/hooks";
 import { addTool, setToolPolicy } from "../../../redux/slices/uiSlice";

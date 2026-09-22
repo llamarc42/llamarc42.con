@@ -1,0 +1,19 @@
+name: Review metadata changed
+
+on:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_comment:
+    types: [created, edited, deleted]
+
+# Review events use PR workflow code. This relay has no credentials, checkout,
+# artifacts, or review decisions. The default-branch workflow_run consumer reads
+# live GitHub metadata independently, even if this relay fails or is modified.
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "Review metadata changed; refresh trusted review gate."

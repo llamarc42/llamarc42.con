@@ -3,7 +3,7 @@ import { IndexingStatus } from "core";
 import { useMemo } from "react";
 import { useAuth } from "../../../../context/Auth";
 import { useAppSelector } from "../../../../redux/hooks";
-import { EmptyState } from "../../../../components/ui";
+import { EmptyState } from "../../../../components/ui/EmptyState";
 import DocsIndexingStatus from "./DocsIndexingStatus";
 
 function DocsIndexingStatuses() {
