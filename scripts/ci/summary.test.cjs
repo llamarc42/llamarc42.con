@@ -19,6 +19,31 @@ test("actual workflow requires exactly the three supported platforms", () => {
   assert.doesNotThrow(() => validatePlatformMatrix(workflow));
 });
 
+for (const name of ["preflight", "static", "platform"]) {
+  test(`${name} rejects ignored job failures`, () => {
+    for (const value of [true, "${{ true }}"]) {
+      const candidate = structuredClone(workflow);
+      candidate.jobs[name]["continue-on-error"] = value;
+      assert.throws(
+        () => validatePlatformMatrix(candidate),
+        /failures cannot be ignored/,
+      );
+    }
+  });
+  test(`${name} rejects ignored failures at every step`, () => {
+    for (let index = 0; index < workflow.jobs[name].steps.length; index++) {
+      for (const value of [true, "${{ true }}"]) {
+        const candidate = structuredClone(workflow);
+        candidate.jobs[name].steps[index]["continue-on-error"] = value;
+        assert.throws(
+          () => validatePlatformMatrix(candidate),
+          /failures cannot be ignored/,
+        );
+      }
+    }
+  });
+}
+
 for (const [name, mutate] of [
   [
     "ignored platform failure",

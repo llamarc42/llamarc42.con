@@ -1,6 +1,20 @@
 const assert = require("node:assert/strict");
 
 function validatePlatformMatrix(workflow) {
+  for (const name of ["preflight", "static", "platform"]) {
+    const job = workflow.jobs?.[name];
+    assert.ok(job && Array.isArray(job.steps), `Missing ${name} stage steps`);
+    for (const [label, item] of [
+      [name, job],
+      ...job.steps.map((step, index) => [`${name} step ${index + 1}`, step]),
+    ]) {
+      assert.ok(
+        item["continue-on-error"] === undefined ||
+          item["continue-on-error"] === false,
+        `${label} failures cannot be ignored`,
+      );
+    }
+  }
   const platform = workflow.jobs?.platform;
   const matrix = platform?.strategy?.matrix;
   assert.ok(matrix && typeof matrix === "object", "Missing platform matrix");

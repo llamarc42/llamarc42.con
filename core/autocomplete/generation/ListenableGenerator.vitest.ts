@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ListenableGenerator } from "./ListenableGenerator";
 
 describe("ListenableGenerator", () => {
+  afterEach(() => vi.useRealTimers());
   // Helper function to create an async generator
   async function* asyncGenerator<T>(values: T[], delay = 0) {
     for (const value of values) {
@@ -34,6 +35,7 @@ describe("ListenableGenerator", () => {
   });
 
   it("should allow listeners to receive values", async () => {
+    vi.useFakeTimers();
     const values = [1, 2, 3];
     const source = asyncGenerator(values, 10); // Introduce delay to simulate async behavior
     const onError = vi.fn();
@@ -46,13 +48,11 @@ describe("ListenableGenerator", () => {
 
     const listener = vi.fn();
 
-    // Add listener after some delay to simulate late subscription
-    setTimeout(() => {
-      lg.listen(listener);
-    }, 15);
-
-    // Wait for generator to finish
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Subscribe after the first value, then deterministically finish the source.
+    await vi.advanceTimersByTimeAsync(15);
+    lg.listen(listener);
+    expect(listener.mock.calls).toEqual([[1]]);
+    await vi.runAllTimersAsync();
 
     expect(listener).toHaveBeenCalledWith(1);
     expect(listener).toHaveBeenCalledWith(2);
@@ -62,6 +62,7 @@ describe("ListenableGenerator", () => {
   });
 
   it("should buffer values for listeners added after some values have been yielded", async () => {
+    vi.useFakeTimers();
     const values = [1, 2, 3];
     const source = asyncGenerator(values, 10);
     const onError = vi.fn();
@@ -77,14 +78,15 @@ describe("ListenableGenerator", () => {
     lg.listen(initialListener);
 
     // Wait for the first value to be yielded
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await vi.advanceTimersByTimeAsync(15);
+    expect(initialListener.mock.calls).toEqual([[1]]);
 
     // Add a second listener
     const newListener = vi.fn();
     lg.listen(newListener);
 
     // Wait for generator to finish
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await vi.runAllTimersAsync();
 
     // Both listeners should have received all values
     [initialListener, newListener].forEach((listener) => {
@@ -163,8 +165,12 @@ describe("ListenableGenerator", () => {
     const listener = vi.fn();
     lg.listen(listener);
 
-    // Wait for the generator to finish
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Wait for the completion signal rather than an assumed wall-clock delay.
+    await new Promise<void>((resolve) => {
+      lg.listen((value) => {
+        if (value === null) resolve();
+      });
+    });
 
     expect(listener).toHaveBeenCalledWith(1);
     expect(listener).toHaveBeenCalledWith(2);
