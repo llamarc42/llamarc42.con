@@ -17,8 +17,11 @@ const AdmZip = require("adm-zip");
     "Fixture token: L42-CI-CONTINUATION\n",
   );
   const target = `${process.platform}-${process.arch}`;
+  const { version } = JSON.parse(
+    fs.readFileSync("extensions/vscode/package.json", "utf8"),
+  );
   const artifact = path.resolve(
-    `extensions/vscode/build/continue-${target}-2.0.0.vsix`,
+    `extensions/vscode/build/continue-${target}-${version}.vsix`,
   );
   const zip = new AdmZip(artifact);
   for (const name of [

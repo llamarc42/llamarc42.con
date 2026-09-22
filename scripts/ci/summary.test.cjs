@@ -13,6 +13,25 @@ const workflow = YAML.parse(
 );
 const script = workflow.jobs.required.steps[0].with.script;
 
+test("review changes relay to trusted metadata code without credentials", () => {
+  const relay = YAML.parse(
+    fs.readFileSync(".github/workflows/review-metadata-changed.yml", "utf8"),
+  );
+  const gate = YAML.parse(
+    fs.readFileSync(".github/workflows/copilot-review-gate.yml", "utf8"),
+  );
+  assert.deepEqual(relay.permissions, {});
+  assert.ok(relay.on.pull_request_review.types.includes("dismissed"));
+  assert.ok(relay.on.pull_request_review.types.includes("submitted"));
+  assert.ok(gate.on.workflow_run.workflows.includes(relay.name));
+  assert.ok(gate.on.workflow_run.types.includes("completed"));
+  assert.equal(gate.on.pull_request_review, undefined);
+  assert.equal(
+    gate.jobs.review.steps[0].with.ref,
+    "${{ github.event.repository.default_branch }}",
+  );
+});
+
 for (const status of ["failure", "cancelled", "skipped", undefined]) {
   test(`summary fails closed on ${status}`, () => {
     let failed = false;

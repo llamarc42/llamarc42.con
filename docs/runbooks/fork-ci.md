@@ -55,6 +55,11 @@ The initial Windows core Vitest audit passed 110 tests before a Unix-only file U
 fixture failed in `runTerminalCommand.vitest.ts`. The fixture now constructs a URL
 from a native temporary path with spaces. No platform skip was introduced.
 
+All three local TypeScript checks pass. GUI lint currently fails on 25 inherited
+barrel-export violations in nine files; the rule remains enabled. Static validation
+therefore blocks the platform matrix until this debt is repaired. The packaged
+Windows list/read/answer smoke passes locally; this is not three-platform proof.
+
 ## Bootstrap and enforcement
 
 `fork-ci.yml` can validate its introducing PR. The privileged review workflow must
@@ -63,9 +68,14 @@ default-branch bootstrap. For that initial PR, verify Copilot's current-head rev
 directly before requesting a merge. Do not manufacture a passing review status.
 
 Once bootstrapped, review metadata is refreshed after the Copilot workflow, PR
-head changes, manual dispatch, and a five-minute scheduled check. GitHub may delay
-scheduled runs. Dismissals/conversation changes can therefore have refresh latency;
-always recheck live review metadata immediately before an authorized merge.
+head changes, review submissions/edits/dismissals, review comments, manual dispatch,
+and a five-minute scheduled check. Review events run a credential-free relay;
+its completion triggers the trusted default-branch gate, which independently
+queries live metadata and never consumes relay artifacts or code. GitHub can delay
+event processing and scheduled runs; thread-resolution changes also rely on the
+scheduled fallback. Always recheck live review metadata immediately before an
+authorized merge. Event-driven refresh reduces latency; it is not an atomic merge
+interlock against concurrent review changes.
 
 Configure required statuses `Fork CI required` and `Copilot review current head`
 only after the real checks have been exercised. Require PRs, resolved conversations,

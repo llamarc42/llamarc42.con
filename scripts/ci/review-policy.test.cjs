@@ -28,6 +28,12 @@ for (const [name, reviews, unresolved, expected] of [
   ["unresolved conversation", [review], true, "pending"],
   ["completed current review", [review], false, "success"],
   [
+    "approved current review",
+    [{ ...review, state: "APPROVED" }],
+    false,
+    "success",
+  ],
+  [
     "latest review wins",
     [review, { ...review, id: 2, state: "DISMISSED" }],
     false,
