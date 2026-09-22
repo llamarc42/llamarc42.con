@@ -12,6 +12,9 @@ still needs a successful bootstrap.
 - Preflight validation, workflow syntax checking, static checks, full offline
   desktop tests, and native VSIX packaging on three OS runners. The required
   summary fails on any failed, cancelled, or unexpectedly skipped stage.
+- Node test tasks enforce minimum passing counts. Each Jest/Vitest task writes
+  a fresh JSON report and must report at least one passing test, zero failures,
+  and success; empty or entirely skipped runs fail validation.
 - A packaged-extension smoke harness: isolated VS Code 1.95.0, synthetic workspace,
   local scripted Ollama server, and actual list/read/answer continuation through
   the bundled model and tool dispatcher. This does not test the new JSON loader,
@@ -33,6 +36,8 @@ still imports `distutils`, which newer Python runtimes removed. On Windows, the
 legacy POSIX quoting integration tests require Git for Windows' `bin/sh.exe` under
 Program Files. Those tests establish POSIX quoting behavior, not cmd.exe or
 PowerShell compatibility for legacy tools.
+The fetch TLS fixtures use Git for Windows' `usr/bin/openssl.exe` to generate
+real certificates; generation failures fail the tests rather than using fake PEM.
 This is the latest 3.11 binary release in the setup-python manifest shared by
 all configured platforms; later 3.11 entries are Linux-only. It is a build-time
 compatibility pin, not a shipped application runtime. Updating the inherited
@@ -89,6 +94,13 @@ working directory. Test-created nested Git metadata under `core/.git` was preser
 outside the checkout in `.build-tools/test-created-core-git-backup-20260922`; the
 main repository was not replaced or reset. The extension's 86 unit tests and the
 rebuilt Windows VSIX smoke also pass locally.
+
+GitHub run 35761973058 passed the complete Node 22 matrix on Windows, macOS,
+and Linux at commit `4ee8d3c9ca9aa7d0d48cea3c1c1703152ac0e1aa`, including
+all three packaged-extension smokes. Subsequent review fixes require fresh CI.
+The smoke's private extension API now requires VS Code's actual Test extension
+mode, and the rebuilt Windows smoke passes with that restriction. Desktop CI
+also skips the unrelated JetBrains webview copy during packaging.
 
 ## Bootstrap and enforcement
 

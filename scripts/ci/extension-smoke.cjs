@@ -126,7 +126,6 @@ const AdmZip = require("adm-zip");
       extensionTestsPath: path.resolve("scripts/ci/extension-test.cjs"),
       extensionTestsEnv: {
         CONTINUE_GLOBAL_DIR: configDir,
-        CONTINUE_TEST_API: "true",
         NODE_ENV: "production",
       },
       launchArgs: [

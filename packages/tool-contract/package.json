@@ -8,7 +8,7 @@
     "node": ">=20.20.1"
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node ../../scripts/ci/node-tests.cjs 17 test/contract.test.js",
     "build": "node --check src/index.js"
   },
   "dependencies": {

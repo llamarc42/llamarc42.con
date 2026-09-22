@@ -3,7 +3,7 @@ import * as http from "node:http";
 import * as https from "node:https";
 import * as os from "node:os";
 import * as path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, test } from "vitest";
 import { fetchwithRequestOptions } from "./fetch.js";
 
@@ -50,21 +50,30 @@ async function generateCertificate(
   const keyPath = path.join(tempDir, `${name}.key`);
   const caCertPath = path.join(tempDir, `${name}-ca.crt`);
 
-  try {
-    // Generate a private key
-    execSync(`openssl genrsa -out "${keyPath}" 2048`, { stdio: "pipe" });
+  const openssl =
+    process.platform === "win32"
+      ? path.join(
+          process.env.ProgramFiles || "C:\\Program Files",
+          "Git",
+          "usr",
+          "bin",
+          "openssl.exe",
+        )
+      : "openssl";
+  // Generate a private key
+  execFileSync(openssl, ["genrsa", "-out", keyPath, "2048"], { stdio: "pipe" });
 
-    // Create config file for certificate
-    const configPath = path.join(tempDir, `${name}.conf`);
-    const altNames = options.san
-      .map((san, i) => {
-        return san.match(/^\d+\.\d+\.\d+\.\d+$/)
-          ? `IP.${i + 1} = ${san}`
-          : `DNS.${i + 1} = ${san}`;
-      })
-      .join("\n");
+  // Create config file for certificate
+  const configPath = path.join(tempDir, `${name}.conf`);
+  const altNames = options.san
+    .map((san, i) => {
+      return san.match(/^\d+\.\d+\.\d+\.\d+$/)
+        ? `IP.${i + 1} = ${san}`
+        : `DNS.${i + 1} = ${san}`;
+    })
+    .join("\n");
 
-    const configContent = `
+  const configContent = `
 [req]
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
@@ -85,38 +94,33 @@ subjectAltName = @alt_names
 [alt_names]
 ${altNames}
 `;
-    fs.writeFileSync(configPath, configContent);
+  fs.writeFileSync(configPath, configContent);
 
-    // Generate a self-signed certificate
-    execSync(
-      `openssl req -new -x509 -key "${keyPath}" -out "${certPath}" -days 365 -config "${configPath}" -extensions v3_req`,
-      { stdio: "pipe" },
-    );
+  // Generate a self-signed certificate
+  execFileSync(
+    openssl,
+    [
+      "req",
+      "-new",
+      "-x509",
+      "-key",
+      keyPath,
+      "-out",
+      certPath,
+      "-days",
+      "365",
+      "-config",
+      configPath,
+      "-extensions",
+      "v3_req",
+    ],
+    { stdio: "pipe" },
+  );
 
-    // Copy the certificate as CA (for testing custom CA scenarios)
-    fs.copyFileSync(certPath, caCertPath);
+  // Copy the certificate as CA (for testing custom CA scenarios)
+  fs.copyFileSync(certPath, caCertPath);
 
-    return { certPath, keyPath, caCertPath };
-  } catch (error) {
-    // Fallback: create minimal test certificates if OpenSSL not available
-    const key = `-----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC7VJTUt9Us8cKB
-wEiOfniel+2jNcJjYUiUoq5YbVKk+xqt4bOMh5DNFJ3LnU1OaUHyG5sHlgNyKA==
------END PRIVATE KEY-----`;
-
-    const cert = `-----BEGIN CERTIFICATE-----
-MIICljCCAX4CCQCKnW9qX7TlxzANBgkqhkiG9w0BAQsFADANMQswCQYDVQQGEwJV
-UzAeFw0yNDAxMDEwMDAwMDBaFw0yNTAxMDEwMDAwMDBaMA0xCzAJBgNVBAYTAlVT
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1L7VLPHCQD1OvF4p
-4td9ozXCY2FIlKKuWG1SpPsareGzjIeQzRSdy51NTmlB8hubB5YDcigN8=
------END CERTIFICATE-----`;
-
-    fs.writeFileSync(keyPath, key);
-    fs.writeFileSync(certPath, cert);
-    fs.writeFileSync(caCertPath, cert);
-
-    return { certPath, keyPath, caCertPath };
-  }
+  return { certPath, keyPath, caCertPath };
 }
 
 /**

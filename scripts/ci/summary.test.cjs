@@ -12,6 +12,40 @@ const workflow = YAML.parse(
   fs.readFileSync(".github/workflows/fork-ci.yml", "utf8"),
 );
 const script = workflow.jobs.required.steps[0].with.script;
+const { assertTestReport, assertNodeSummary } = require("./test-results.cjs");
+
+test("test reports reject empty, skipped-only, failed, or missing inventories", () => {
+  for (const report of [
+    undefined,
+    {},
+    { success: true, numTotalTests: 0, numPassedTests: 0, numFailedTests: 0 },
+    { success: true, numTotalTests: 8, numPassedTests: 0, numFailedTests: 0 },
+    { success: false, numTotalTests: 8, numPassedTests: 7, numFailedTests: 1 },
+  ])
+    assert.throws(() => assertTestReport(report));
+  assert.doesNotThrow(() =>
+    assertTestReport({
+      success: true,
+      numTotalTests: 8,
+      numPassedTests: 8,
+      numFailedTests: 0,
+    }),
+  );
+});
+
+test("Node inventory rejects empty files and missing or skipped tests", () => {
+  for (const output of [
+    "",
+    "# tests 0\n# pass 0\n# fail 0\n",
+    "# tests 1\n# pass 1\n# fail 0\n",
+    "# tests 17\n# pass 0\n# fail 0\n",
+  ]) {
+    assert.throws(() => assertNodeSummary(output, 17));
+  }
+  assert.doesNotThrow(() =>
+    assertNodeSummary("# tests 17\n# pass 17\n# fail 0\n", 17),
+  );
+});
 
 test("review changes relay to trusted metadata code without credentials", () => {
   const relay = YAML.parse(

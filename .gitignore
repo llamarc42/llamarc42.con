@@ -181,4 +181,5 @@ keys
 
 # Isolated VS Code integration-test downloads
 .vscode-test/
+.ci-test-results-*/
 

@@ -1,6 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+} from "node:fs";
+import { basename, resolve } from "node:path";
+import testResults from "./test-results.cjs";
 
 export function run(command, args, cwd = process.cwd(), timeout = 1200000) {
   const result = spawnSync(command, args, {
@@ -61,21 +68,47 @@ if (task === "install") {
 } else if (task === "tests") {
   // Explicitly excludes credential-dependent provider tests using upstream's flag.
   process.env.IGNORE_API_KEY_TESTS = "true";
-  run(npm, ["test", "--", "--runInBand", "--bail"], resolve("core"));
-  run(npm, ["run", "vitest", "--", "--bail=1"], resolve("core"));
-  run(npm, ["test", "--", "--bail=1"], resolve("gui"));
-  run(npm, ["run", "vitest", "--", "--bail=1"], resolve("extensions/vscode"));
-  for (const directory of ["terminal-security", "fetch", "openai-adapters"]) {
+  function testPackage(directory, args, framework) {
+    const reports = mkdtempSync(resolve(directory, ".ci-test-results-"));
+    const report = resolve(reports, "results.json");
+    // Keep shell arguments independent of spaces/metacharacters in the checkout.
+    // Each invocation gets a fresh directory so stale results cannot pass.
+    const reportArgument = `${basename(reports)}/results.json`;
+    const reporter =
+      framework === "jest"
+        ? ["--json"]
+        : ["--reporter=default", "--reporter=json"];
     run(
       npm,
+      [
+        ...args,
+        ...reporter,
+        `--outputFile=${reportArgument}`,
+        "--passWithNoTests=false",
+      ],
+      resolve(directory),
+    );
+    testResults.assertTestReport(JSON.parse(readFileSync(report, "utf8")));
+  }
+  testPackage("core", ["test", "--", "--runInBand", "--bail"], "jest");
+  testPackage("core", ["run", "vitest", "--", "--bail=1"], "vitest");
+  testPackage("gui", ["test", "--", "--bail=1"], "vitest");
+  testPackage(
+    "extensions/vscode",
+    ["run", "vitest", "--", "--bail=1"],
+    "vitest",
+  );
+  for (const directory of ["terminal-security", "fetch", "openai-adapters"]) {
+    testPackage(
+      `packages/${directory}`,
       ["exec", "--", "vitest", "run", "--bail=1"],
-      resolve(`packages/${directory}`),
+      "vitest",
     );
   }
-  run(
-    npm,
+  testPackage(
+    "packages/config-yaml",
     ["test", "--", "--runInBand", "--bail"],
-    resolve("packages/config-yaml"),
+    "jest",
   );
 } else if (task === "package") {
   const target = `${process.platform}-${process.arch}`;
@@ -98,6 +131,7 @@ if (task === "install") {
     );
   }
   process.env.SKIP_INSTALLS = "true";
+  process.env.SKIP_JETBRAINS_COPY = "true";
   process.env.CONTINUE_VSCODE_TARGET = target;
   // SKIP_INSTALLS also bypasses upstream's schema generation. Generate from the
   // already locked dependencies without invoking its additional npm install.
