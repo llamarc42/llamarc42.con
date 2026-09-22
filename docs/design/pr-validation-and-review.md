@@ -104,8 +104,12 @@ GitHub commit statuses do not expire. An API outage can prevent revocation of a
 previous success, and event processing is asynchronous. The implementation cannot
 turn that status into an atomic authorization check. Keep auto-merge disabled and
 require live, successful verification of the current head immediately before a
-user-authorized merge; unavailable metadata blocks that merge. See the bootstrap
-runbook for the event relay and remaining enforcement limits.
+user-authorized merge; unavailable metadata blocks that merge. The implementation
+provides `scripts/ci/merge-reviewed.cjs`: the supported agent merge path reads live
+metadata, ignores cached review statuses, and does not issue a merge on lookup
+failure. The optional `--merge` operation uses GitHub's expected-head SHA guard.
+See the bootstrap runbook for usage, the event relay, and remaining enforcement
+limits. This does not prevent a human administrator from bypassing the command.
 
 ## Repository enforcement and rollout
 

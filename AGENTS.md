@@ -11,6 +11,10 @@
   new head. Do not bypass required checks or review requirements.
 - Review completion is separate from merge authorization. Merge only when the
   user has authorized it and required validation has passed.
+- For an authorized merge, use `node scripts/ci/merge-reviewed.cjs OWNER/REPO PR HEAD_SHA --merge`
+  from a reviewed, trusted checkout. This rechecks live CI, reviews, conversations,
+  and head before the expected-head merge. Never substitute a cached status or
+  direct UI/CLI merge when this guard fails. Without `--merge` it is read-only.
 
 ## Tool portability
 

@@ -124,8 +124,27 @@ a previously published success can remain visible even though the refresh job
 fails. This is a platform limitation, not a successful verification: do not merge
 during an unverifiable refresh, and do not enable auto-merge based on this status.
 A live current-head review check is mandatory at merge time. This addresses
-Copilot's API-outage finding by documenting the remaining enforcement limit;
-the workflow is an asynchronous aid, not an outage-proof authorization service.
+Copilot's API-outage finding through the executable merge guard below;
+the workflow status is advisory, not an outage-proof authorization service.
+
+Use a reviewed, trusted checkout to run:
+
+```text
+node scripts/ci/merge-reviewed.cjs llamarc42/llamarc42.con PR_NUMBER HEAD_SHA
+```
+
+This is read-only. For a separately user-authorized merge, append `--merge`.
+The command reads the PR directly (no dependency on listing all PRs), requires
+the latest Fork CI run for that head to pass, paginates current reviews and
+conversations, and rechecks the head and base before a squash merge with GitHub's
+expected-head SHA guard. Any failed API read aborts without issuing a merge.
+It never uses a previous commit status as authorization or queues auto-merge.
+Regression tests inject failure at each metadata read and assert zero merge calls.
+Do not bypass a failed guard with a direct CLI/UI merge. This is the supported
+agent merge path, not a claim that GitHub's UI or administrators cannot bypass it.
+GitHub cannot atomically bind review state to a merge; the expected SHA prevents
+head replacement, while review/base races after the final read remain subject
+to repository rules. Those rules still need the bootstrap described below.
 
 Configure required statuses `Fork CI required` and `Copilot review current head`
 only after the real checks have been exercised. Require PRs, resolved conversations,

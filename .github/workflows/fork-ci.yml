@@ -42,7 +42,7 @@ jobs:
       - name: Validate workflow expressions and job structure
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes= .github/workflows/fork-ci.yml .github/workflows/copilot-review-gate.yml .github/workflows/review-metadata-changed.yml
       - run: npm test --prefix packages/tool-contract
-      - run: node scripts/ci/node-tests.cjs 16 scripts/ci/review-policy.test.cjs scripts/ci/summary.test.cjs
+      - run: node scripts/ci/node-tests.cjs 29 scripts/ci/review-policy.test.cjs scripts/ci/summary.test.cjs scripts/ci/safety.test.cjs
 
   static:
     needs: preflight

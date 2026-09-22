@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { parseManifest } from "../../packages/tool-contract/src/index.js";
+import lockfiles from "./lockfiles.cjs";
 
 const require = createRequire(
   new URL("../../packages/tool-contract/package.json", import.meta.url),
@@ -67,26 +68,5 @@ for (const file of readdirSync("packages/tool-contract/fixtures")) {
     readFileSync(`packages/tool-contract/fixtures/${file}`, "utf8"),
   );
 }
-for (const file of changed.filter((file) => file.endsWith("package.json"))) {
-  const lockPath = file.replace(/package.json$/, "package-lock.json");
-  if (!existsSync(lockPath)) throw new Error(`${file}: missing lockfile`);
-  const manifest = JSON.parse(readFileSync(file));
-  const lock = JSON.parse(readFileSync(lockPath)).packages[""];
-  for (const key of [
-    "dependencies",
-    "devDependencies",
-    "optionalDependencies",
-    "version",
-  ]) {
-    // Stable ordering, including dependency keys.
-    const normalize = (value) =>
-      value && typeof value === "object" ? Object.entries(value).sort() : value;
-    if (
-      JSON.stringify(normalize(manifest[key])) !==
-      JSON.stringify(normalize(lock[key]))
-    ) {
-      throw new Error(`${file}: lockfile differs in ${key}`);
-    }
-  }
-}
+lockfiles.validateLockfiles(allChanged);
 console.log(`Preflight passed for ${allChanged.length} changed paths`);
