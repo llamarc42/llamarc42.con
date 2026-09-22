@@ -9,7 +9,7 @@ import { useContext, useMemo } from "react";
 
 import { GhostButton } from "../../components";
 import { useEditModel } from "../../components/mainInput/Lump/useEditBlock";
-import { useMainEditor } from "../../components/mainInput/TipTapEditor";
+import { useMainEditor } from "../../components/mainInput/TipTapEditor/MainEditorProvider";
 import ToggleDiv from "../../components/ToggleDiv";
 import { useAuth } from "../../context/Auth";
 import { IdeMessengerContext } from "../../context/IdeMessenger";

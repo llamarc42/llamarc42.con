@@ -3,7 +3,9 @@ import {
   modifyAnyConfigWithSharedConfig,
 } from "core/config/sharedConfig";
 import { useContext, useEffect, useState } from "react";
-import { Card, Toggle, useFontSize } from "../../../components/ui";
+import { Card } from "../../../components/ui/Card";
+import { Toggle } from "../../../components/ui/Toggle";
+import { useFontSize } from "../../../components/ui/font";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { updateConfig } from "../../../redux/slices/configSlice";

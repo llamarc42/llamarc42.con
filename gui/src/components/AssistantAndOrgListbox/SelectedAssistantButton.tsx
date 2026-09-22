@@ -4,7 +4,7 @@ import type { ProfileDescription } from "core/config/ConfigHandler";
 import { useAppSelector } from "../../redux/hooks";
 import { fontSize } from "../../util";
 import { cn } from "../../util/cn";
-import { ListboxButton } from "../ui";
+import { ListboxButton } from "../ui/Listbox";
 import { AssistantIcon } from "./AssistantIcon";
 
 interface SelectedAssistantButtonProps {

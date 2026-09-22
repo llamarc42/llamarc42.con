@@ -14,14 +14,12 @@ import { setDialogMessage, setShowDialog } from "../../redux/slices/uiSlice";
 import { updateSelectedModelByRole } from "../../redux/thunks/updateSelectedModelByRole";
 import { getMetaKeyLabel, isMetaEquivalentKeyPressed } from "../../util";
 import { CONFIG_ROUTES } from "../../util/navigation";
-import {
-  Button,
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  useFontSize,
-} from "../ui";
+import { Button } from "../ui/Button";
+import { Listbox } from "@headlessui/react";
+import { ListboxButton } from "../ui/Listbox";
+import { ListboxOption } from "../ui/Listbox";
+import { ListboxOptions } from "../ui/Listbox";
+import { useFontSize } from "../ui/font";
 import { Divider } from "../ui/Divider";
 
 interface ModelOptionProps {

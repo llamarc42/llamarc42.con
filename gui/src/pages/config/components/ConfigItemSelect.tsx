@@ -12,12 +12,10 @@ interface ConfigItemSelectProps {
 }
 
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import {
-  Popover,
-  PopoverButton,
-  PopoverPanel,
-  Transition,
-} from "../../../components/ui";
+import { Popover } from "@headlessui/react";
+import { PopoverButton } from "@headlessui/react";
+import { PopoverPanel } from "@headlessui/react";
+import { Transition } from "../../../components/ui/Transition";
 import { fontSize } from "../../../util";
 
 export function ConfigItemSelect({

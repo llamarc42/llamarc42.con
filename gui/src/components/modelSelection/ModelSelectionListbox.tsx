@@ -5,13 +5,11 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  Transition,
-} from "../../components/ui";
+import { Listbox } from "@headlessui/react";
+import { ListboxButton } from "../ui/Listbox";
+import { ListboxOption } from "../ui/Listbox";
+import { ListboxOptions } from "../ui/Listbox";
+import { Transition } from "../ui/Transition";
 import { DisplayInfo } from "../../pages/AddNewModel/configs/models";
 
 interface ModelSelectionListboxProps {

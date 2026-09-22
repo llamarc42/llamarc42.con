@@ -1,6 +1,6 @@
 import { Editor } from "@tiptap/core";
 import { ContextProviderDescription } from "core";
-import { Mention } from "../extensions";
+import { Mention } from "../extensions/Mention";
 
 function isEditorContentEmpty(editor: Editor): boolean {
   const editorContent = editor.getJSON();

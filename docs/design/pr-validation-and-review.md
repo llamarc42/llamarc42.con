@@ -100,6 +100,13 @@ head SHA again immediately before merging, and use an expected-head guard.
 Implementation must prove the gate works with actual Copilot review events before
 it becomes a required check.
 
+GitHub commit statuses do not expire. An API outage can prevent revocation of a
+previous success, and event processing is asynchronous. The implementation cannot
+turn that status into an atomic authorization check. Keep auto-merge disabled and
+require live, successful verification of the current head immediately before a
+user-authorized merge; unavailable metadata blocks that merge. See the bootstrap
+runbook for the event relay and remaining enforcement limits.
+
 ## Repository enforcement and rollout
 
 1. Inventory inherited workflows and disable or guard publishing, scheduled

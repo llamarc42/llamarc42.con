@@ -1,6 +1,6 @@
 import { OnboardingModes } from "core/protocol/core";
 import { useNavigate } from "react-router-dom";
-import { OnboardingCardState } from "..";
+import { OnboardingCardState } from "../OnboardingCard";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import {
   setDialogMessage,

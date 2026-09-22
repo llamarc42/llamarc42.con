@@ -8,7 +8,7 @@ import {
 import { useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Shortcut from "../../../components/gui/Shortcut";
-import { Card } from "../../../components/ui";
+import { Card } from "../../../components/ui/Card";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { setOnboardingCard } from "../../../redux/slices/uiSlice";

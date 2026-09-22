@@ -29,8 +29,9 @@ import {
   useEditBlock,
   useOpenRule,
 } from "../../../components/mainInput/Lump/useEditBlock";
-import { useMainEditor } from "../../../components/mainInput/TipTapEditor";
-import { Card, EmptyState } from "../../../components/ui";
+import { useMainEditor } from "../../../components/mainInput/TipTapEditor/MainEditorProvider";
+import { Card } from "../../../components/ui/Card";
+import { EmptyState } from "../../../components/ui/EmptyState";
 import { useAuth } from "../../../context/Auth";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useBookmarkedSlashCommands } from "../../../hooks/useBookmarkedSlashCommands";

@@ -56,7 +56,7 @@ if (task === "install") {
     );
   }
   run(npm, ["run", "lint"], resolve("core"));
-  run(npm, ["run", "lint", "--", "src"], resolve("gui"));
+  run(npm, ["run", "lint"], resolve("gui"));
   run(npm, ["run", "lint"], resolve("extensions/vscode"));
 } else if (task === "tests") {
   // Explicitly excludes credential-dependent provider tests using upstream's flag.

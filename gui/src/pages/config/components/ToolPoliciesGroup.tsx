@@ -6,7 +6,7 @@ import { Tool } from "core";
 import { useMemo, useState } from "react";
 import ToggleSwitch from "../../../components/gui/Switch";
 import { ToolTip } from "../../../components/gui/Tooltip";
-import { Card } from "../../../components/ui";
+import { Card } from "../../../components/ui/Card";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { toggleToolGroupSetting } from "../../../redux/slices/uiSlice";
 import { ToolPolicyItem } from "./ToolPolicyItem";

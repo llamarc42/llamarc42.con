@@ -17,15 +17,13 @@ import { useContext, useMemo, useState } from "react";
 import Alert from "../../../components/gui/Alert";
 import { ToolTip } from "../../../components/gui/Tooltip";
 import { useEditBlock } from "../../../components/mainInput/Lump/useEditBlock";
-import {
-  Button,
-  Card,
-  EmptyState,
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from "../../../components/ui";
+import { Button } from "../../../components/ui/Button";
+import { Card } from "../../../components/ui/Card";
+import { EmptyState } from "../../../components/ui/EmptyState";
+import { Listbox } from "@headlessui/react";
+import { ListboxButton } from "../../../components/ui/Listbox";
+import { ListboxOption } from "../../../components/ui/Listbox";
+import { ListboxOptions } from "../../../components/ui/Listbox";
 import { useAuth } from "../../../context/Auth";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";

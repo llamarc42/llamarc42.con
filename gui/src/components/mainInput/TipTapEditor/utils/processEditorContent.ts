@@ -10,7 +10,9 @@ import {
 } from "core";
 import { ctxItemToRifWithContents } from "core/commands/util";
 import { getUriDescription } from "core/util/uri";
-import { CodeBlock, Mention, PromptBlock } from "../extensions";
+import { CodeBlock } from "../extensions/CodeBlock/CodeBlock";
+import { Mention } from "../extensions/Mention";
+import { PromptBlock } from "../extensions/Prompt/PromptBlock";
 import { GetContextRequest } from "./types";
 
 interface MentionAttrs {

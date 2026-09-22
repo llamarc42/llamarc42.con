@@ -7,7 +7,7 @@ import styled from "styled-components";
 
 import { AnimatedEllipsis } from "../../AnimatedEllipsis";
 import StyledMarkdownPreview from "../../StyledMarkdownPreview";
-import { Button } from "../../ui";
+import { Button } from "../../ui/Button";
 
 const MarkdownWrapper = styled.div`
   & > div > *:first-child {

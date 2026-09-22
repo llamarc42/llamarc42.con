@@ -1,6 +1,7 @@
 import { useDispatch } from "react-redux";
 import AddDocsDialog from "../../../components/dialogs/AddDocsDialog";
-import { Card, Divider } from "../../../components/ui";
+import { Card } from "../../../components/ui/Card";
+import { Divider } from "../../../components/ui/Divider";
 import { setDialogMessage, setShowDialog } from "../../../redux/slices/uiSlice";
 import { ConfigHeader } from "../components/ConfigHeader";
 import DocsIndexingStatuses from "./docs/DocsSection";

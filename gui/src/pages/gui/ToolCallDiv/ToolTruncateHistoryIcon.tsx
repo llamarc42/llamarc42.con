@@ -2,7 +2,7 @@ import { BarsArrowUpIcon } from "@heroicons/react/24/outline";
 import { chatMessageIsEmpty } from "core/llm/messages";
 import { findLastIndex } from "core/util/findLast";
 import { useMemo } from "react";
-import { useMainEditor } from "../../../components/mainInput/TipTapEditor";
+import { useMainEditor } from "../../../components/mainInput/TipTapEditor/MainEditorProvider";
 import { ToolbarButtonWithTooltip } from "../../../components/StyledMarkdownPreview/StepContainerPreToolbar/ToolbarButtonWithTooltip";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { truncateHistoryToMessage } from "../../../redux/slices/sessionSlice";

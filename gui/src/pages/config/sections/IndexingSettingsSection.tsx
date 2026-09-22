@@ -4,13 +4,14 @@ import {
 } from "core/config/sharedConfig";
 import { useContext } from "react";
 import Alert from "../../../components/gui/Alert";
-import { Card, Divider } from "../../../components/ui";
+import { Card } from "../../../components/ui/Card";
+import { Divider } from "../../../components/ui/Divider";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { updateConfig } from "../../../redux/slices/configSlice";
 import { ConfigHeader } from "../components/ConfigHeader";
 import { UserSetting } from "../components/UserSetting";
-import IndexingProgress from "../features/indexing";
+import IndexingProgress from "../features/indexing/IndexingProgress";
 import { DocsSection } from "./DocsSection";
 
 function CodebaseSubSection() {

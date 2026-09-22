@@ -55,10 +55,12 @@ The initial Windows core Vitest audit passed 110 tests before a Unix-only file U
 fixture failed in `runTerminalCommand.vitest.ts`. The fixture now constructs a URL
 from a native temporary path with spaces. No platform skip was introduced.
 
-All three local TypeScript checks pass. GUI lint currently fails on 25 inherited
-barrel-export violations in nine files; the rule remains enabled. Static validation
-therefore blocks the platform matrix until this debt is repaired. The packaged
-Windows list/read/answer smoke passes locally; this is not three-platform proof.
+All three initial local TypeScript checks pass. GUI lint exposed 25 inherited
+barrel-export violations; enabling the omitted TSX coverage exposed nine more.
+The bootstrap replaces those forwarding modules with direct imports and limits
+the MCP compatibility declaration to the symbols actually consumed. The rule
+remains enabled. The packaged Windows list/read/answer smoke passes locally;
+this is not three-platform proof.
 
 ## Bootstrap and enforcement
 
@@ -76,6 +78,14 @@ event processing and scheduled runs; thread-resolution changes also rely on the
 scheduled fallback. Always recheck live review metadata immediately before an
 authorized merge. Event-driven refresh reduces latency; it is not an atomic merge
 interlock against concurrent review changes.
+
+Commit statuses have no expiry. If GitHub's API cannot list PRs or write statuses,
+a previously published success can remain visible even though the refresh job
+fails. This is a platform limitation, not a successful verification: do not merge
+during an unverifiable refresh, and do not enable auto-merge based on this status.
+A live current-head review check is mandatory at merge time. This addresses
+Copilot's API-outage finding by documenting the remaining enforcement limit;
+the workflow is an asynchronous aid, not an outage-proof authorization service.
 
 Configure required statuses `Fork CI required` and `Copilot review current head`
 only after the real checks have been exercised. Require PRs, resolved conversations,
