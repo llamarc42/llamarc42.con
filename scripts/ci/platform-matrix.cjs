@@ -28,6 +28,40 @@ function validatePlatformMatrix(workflow) {
     "Platform validation cannot be conditional",
   );
   assert.ok(
+    platform["continue-on-error"] === undefined ||
+      platform["continue-on-error"] === false,
+    "Platform failures cannot be ignored",
+  );
+  const summary = workflow.jobs?.required;
+  assert.equal(summary?.if, "always()", "Required summary must always run");
+  assert.ok(
+    summary["continue-on-error"] === undefined ||
+      summary["continue-on-error"] === false,
+    "Summary failures cannot be ignored",
+  );
+  assert.deepEqual(
+    [...summary.needs].sort(),
+    ["platform", "preflight", "static"],
+    "Summary must depend on every stage",
+  );
+  assert.equal(summary.steps?.length, 1, "Expected one required summary step");
+  const step = summary.steps[0];
+  assert.equal(step.if, undefined, "Summary step cannot be conditional");
+  assert.ok(
+    step["continue-on-error"] === undefined ||
+      step["continue-on-error"] === false,
+    "Summary step failures cannot be ignored",
+  );
+  assert.equal(
+    step.uses,
+    "actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b",
+    "Summary must execute the pinned checker action",
+  );
+  assert.ok(
+    typeof step.with?.script === "string" && step.with.script.trim(),
+    "Missing summary script",
+  );
+  assert.ok(
     [].concat(workflow.jobs?.required?.needs || []).includes("platform"),
     "Required summary must depend on the platform matrix",
   );

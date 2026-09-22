@@ -48,6 +48,7 @@ function fixture({
   unresolved = false,
   ci = "success",
   changed = false,
+  summary = "success",
 } = {}) {
   let calls = 0;
   let merges = 0;
@@ -81,8 +82,20 @@ function fixture({
           ? { ...pr, head: { sha: "b".repeat(40) } }
           : pr;
       },
-      pages: async () => {
+      pages: async (endpoint, field) => {
         call();
+        if (field === "jobs") {
+          assert.match(endpoint, /runs\/9\/jobs\?filter=latest/);
+          return summary === "missing"
+            ? []
+            : [
+                {
+                  name: "Fork CI required",
+                  status: "completed",
+                  conclusion: summary,
+                },
+              ];
+        }
         return [
           {
             id: 1,
@@ -106,7 +119,7 @@ function fixture({
     merges: () => merges,
   };
 }
-for (let failAt = 1; failAt <= 5; failAt++) {
+for (let failAt = 1; failAt <= 6; failAt++) {
   test(`API failure at read ${failAt} prevents merge despite any cached status`, async () => {
     const f = fixture({ failAt });
     await assert.rejects(mergeReviewed(options, f.api), /API unavailable/);
@@ -118,6 +131,10 @@ for (const [name, scenario] of [
   ["unresolved thread", { unresolved: true }],
   ["failed CI", { ci: "failure" }],
   ["head changes", { changed: true }],
+  ["skipped summary", { summary: "skipped" }],
+  ["missing summary", { summary: "missing" }],
+  ["failed summary", { summary: "failure" }],
+  ["cancelled summary", { summary: "cancelled" }],
 ]) {
   test(`${name} prevents merge`, async () => {
     const f = fixture(scenario);

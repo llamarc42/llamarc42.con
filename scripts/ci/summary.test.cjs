@@ -20,6 +20,63 @@ test("actual workflow requires exactly the three supported platforms", () => {
 });
 
 for (const [name, mutate] of [
+  [
+    "ignored platform failure",
+    (w) => {
+      w.jobs.platform["continue-on-error"] = true;
+    },
+  ],
+  [
+    "dynamic ignored platform failure",
+    (w) => {
+      w.jobs.platform["continue-on-error"] = "${{ true }}";
+    },
+  ],
+  [
+    "skipped summary job",
+    (w) => {
+      w.jobs.required.if = false;
+    },
+  ],
+  [
+    "success-only summary",
+    (w) => {
+      delete w.jobs.required.if;
+    },
+  ],
+  [
+    "ignored summary failure",
+    (w) => {
+      w.jobs.required["continue-on-error"] = true;
+    },
+  ],
+  [
+    "skipped summary step",
+    (w) => {
+      w.jobs.required.steps[0].if = false;
+    },
+  ],
+  [
+    "ignored summary step failure",
+    (w) => {
+      w.jobs.required.steps[0]["continue-on-error"] = true;
+    },
+  ],
+  [
+    "missing summary step",
+    (w) => {
+      w.jobs.required.steps = [];
+    },
+  ],
+]) {
+  test(`gate structure rejects ${name}`, () => {
+    const candidate = structuredClone(workflow);
+    mutate(candidate);
+    assert.throws(() => validatePlatformMatrix(candidate));
+  });
+}
+
+for (const [name, mutate] of [
   ["missing OS", (w) => w.jobs.platform.strategy.matrix.os.pop()],
   ["duplicate OS", (w) => w.jobs.platform.strategy.matrix.os.push("macos-14")],
   [

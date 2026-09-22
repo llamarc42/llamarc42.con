@@ -42,7 +42,7 @@ jobs:
       - name: Validate workflow expressions and job structure
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes= .github/workflows/fork-ci.yml .github/workflows/copilot-review-gate.yml .github/workflows/review-metadata-changed.yml
       - run: npm test --prefix packages/tool-contract
-      - run: node scripts/ci/node-tests.cjs 39 scripts/ci/review-policy.test.cjs scripts/ci/summary.test.cjs scripts/ci/safety.test.cjs
+      - run: node scripts/ci/node-tests.cjs 52 scripts/ci/review-policy.test.cjs scripts/ci/summary.test.cjs scripts/ci/safety.test.cjs
 
   static:
     needs: preflight
@@ -61,6 +61,10 @@ jobs:
         with:
           python-version: 3.11.9
       - run: node scripts/ci/run.mjs install
+        env:
+          # ripgrep's postinstall uses the GitHub API to download its pinned binary.
+          # Avoid shared-runner anonymous rate limits; workflow permissions are read-only.
+          GITHUB_TOKEN: ${{ github.token }}
       - run: node scripts/ci/run.mjs static
 
   platform:
@@ -89,6 +93,8 @@ jobs:
       - run: npm ci --prefix packages/tool-contract --no-audit --no-fund
       - run: npm test --prefix packages/tool-contract
       - run: node scripts/ci/run.mjs install
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - run: node scripts/ci/run.mjs tests
       - run: node scripts/ci/run.mjs package
       - run: npm ci --prefix scripts/ci --no-audit --no-fund

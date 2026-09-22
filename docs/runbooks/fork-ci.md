@@ -15,6 +15,9 @@ still needs a successful bootstrap.
 - Node test tasks enforce minimum passing counts. Each Jest/Vitest task writes
   a fresh JSON report and must report at least one passing test, zero failures,
   and success; empty or entirely skipped runs fail validation.
+- Preflight enforces the exact three-OS matrix and rejects skipped or ignored
+  platform/summary jobs. The live merge guard also verifies that the actual
+  `Fork CI required` job completed successfully in the latest run.
 - A packaged-extension smoke harness: isolated VS Code 1.95.0, synthetic workspace,
   local scripted Ollama server, and actual list/read/answer continuation through
   the bundled model and tool dispatcher. This does not test the new JSON loader,
@@ -48,6 +51,11 @@ full Vitest suite plus packaged-extension smoke. Shared packages: config-yaml
 Jest, terminal-security/fetch/openai-adapters Vitest, tool-contract Node tests.
 Config-types, llm-info, and continue-sdk have upstream no-op test scripts; only
 their available builds/type checks are evidence. Do not report those as tested.
+
+The install steps supply the workflow's read-only GitHub token to ripgrep's
+postinstall downloader. This avoids anonymous API rate limits on shared runners;
+the pinned package/release and all test requirements remain unchanged. The token
+is scoped to install steps, with no added workflow write permissions.
 
 The existing `IGNORE_API_KEY_TESTS=true` branch excludes live provider tests from
 credential-free CI; openai-adapters' existing Vitest config also excludes its live

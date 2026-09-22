@@ -41,6 +41,17 @@ async function mergeReviewed({ repo, number, sha, merge = false }, api) {
     latest.conclusion !== "success"
   )
     throw new Error("Latest Fork CI run for this head must pass");
+  const jobs = await api.pages(
+    `repos/${repo}/actions/runs/${latest.id}/jobs?filter=latest&per_page=100`,
+    "jobs",
+  );
+  const summaries = jobs.filter((job) => job.name === "Fork CI required");
+  if (
+    summaries.length !== 1 ||
+    summaries[0].status !== "completed" ||
+    summaries[0].conclusion !== "success"
+  )
+    throw new Error("Fork CI required summary must run and pass");
   const reviews = await api.pages(`${endpoint}/reviews?per_page=100`);
   const unresolved = await api.unresolved(repo, number);
   const decision = reviewDecision(sha, reviews, unresolved);
@@ -67,7 +78,10 @@ function githubApi() {
     );
   return {
     get: (endpoint) => gh([endpoint]),
-    pages: (endpoint) => gh([endpoint, "--paginate", "--slurp"]).flat(),
+    pages: (endpoint, field) =>
+      gh([endpoint, "--paginate", "--slurp"]).flatMap((page) =>
+        field ? page[field] : page,
+      ),
     unresolved: (repo, number) => {
       const [owner, name] = repo.split("/");
       let cursor = null;
