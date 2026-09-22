@@ -52,6 +52,8 @@ export function parseStatus(buffer) {
 // No shell, user arguments, hooks, fsmonitor, optional index writes, or submodule
 // child processes. Git itself emits slash-separated, NUL-delimited paths.
 export async function readGitStatus(workspace, limits, signal) {
+  if (signal?.aborted)
+    throw new ContractError("cancelled", "Invocation cancelled");
   const cwd = await realpath(workspace).catch(() => {
     throw new ContractError("tool_failed", "Workspace is unavailable");
   });
@@ -133,10 +135,11 @@ export async function readGitStatus(workspace, limits, signal) {
   return parseStatus(output);
 }
 
-/** @param {{args: unknown, workspace: string, enabled: boolean, signal?: AbortSignal, invocationId?: string}} options */
+/** @param {{args: unknown, workspace?: string, resolveWorkspace?: () => Promise<string>, enabled: boolean, signal?: AbortSignal, invocationId?: string}} options */
 export async function executeGitStatus({
   args,
   workspace,
+  resolveWorkspace,
   enabled,
   signal,
   invocationId = randomUUID(),
@@ -150,9 +153,14 @@ export async function executeGitStatus({
   };
   try {
     registry.validateCall(manifest.name, args);
+    if (signal?.aborted)
+      throw new ContractError("cancelled", "Invocation cancelled");
+    const selectedWorkspace = resolveWorkspace
+      ? await resolveWorkspace()
+      : workspace;
     const data = registry.validateResult(
       manifest.id,
-      await readGitStatus(workspace, manifest.limits, signal),
+      await readGitStatus(selectedWorkspace, manifest.limits, signal),
     );
     if (
       Buffer.byteLength(JSON.stringify(data)) > manifest.limits.maxOutputBytes
@@ -173,7 +181,13 @@ export async function executeGitStatus({
     return {
       ...envelope,
       status: code === "cancelled" ? "cancelled" : "error",
-      error: { code, message: error.message },
+      error: {
+        code,
+        message:
+          error instanceof ContractError
+            ? error.message.slice(code.length + 2)
+            : error.message,
+      },
       complete: false,
       durationMs: performance.now() - started,
     };

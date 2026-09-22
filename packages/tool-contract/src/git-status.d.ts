@@ -26,7 +26,8 @@ export type GitStatusResult = Envelope &
 
 export function executeGitStatus(options: {
   args: unknown;
-  workspace: string;
+  workspace?: string;
+  resolveWorkspace?: () => Promise<string>;
   enabled: boolean;
   signal?: AbortSignal;
   invocationId?: string;

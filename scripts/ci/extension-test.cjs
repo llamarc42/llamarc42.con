@@ -18,6 +18,21 @@ exports.run = async function () {
   const gitTool = tools.find((tool) => tool.function.name === "git_status");
   assert.equal(gitTool.defaultToolPolicy, "allowedWithPermission");
   assert.equal(gitTool.function.parameters.additionalProperties, false);
+  for (const argumentsText of ["{", '{"command":"not allowed"}']) {
+    const result = await host.core.invoke("tools/call", {
+      toolCall: {
+        id: "invalid-git-status",
+        type: "function",
+        function: { name: "git_status", arguments: argumentsText },
+      },
+    });
+    assert.equal(result.errorMessage, undefined);
+    const envelope = JSON.parse(result.contextItems[0].content);
+    assert.equal(envelope.invocationId, "invalid-git-status");
+    assert.equal(envelope.status, "error");
+    assert.equal(envelope.error.code, "invalid_arguments");
+    assert.equal(envelope.complete, false);
+  }
   const messages = [
     {
       role: "user",

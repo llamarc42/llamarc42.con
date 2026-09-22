@@ -21,7 +21,10 @@ export const getConfigDependentToolDefinitions = async (
 ): Promise<Tool[]> => {
   const { modelName, enableExperimentalTools, isRemote } = params;
   const tools: Tool[] = [];
-  if ((await params.ide.getIdeSettings()).enableGitStatusTool === true) {
+  if (
+    !isRemote &&
+    (await params.ide.getIdeSettings()).enableGitStatusTool === true
+  ) {
     tools.push(gitStatusTool());
   }
 

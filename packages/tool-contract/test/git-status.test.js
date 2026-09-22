@@ -6,6 +6,7 @@ import {
   rmSync,
   mkdirSync,
   renameSync,
+  existsSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -163,4 +164,61 @@ test("repository configuration cannot redirect status outside the selected works
   const result = await executeGitStatus({ args: {}, enabled: true, workspace });
   assert.equal(result.status, "success");
   assert.deepEqual(result.data.entries, []);
+});
+
+test("repository shell aliases cannot shadow the built-in status command", async (t) => {
+  const { workspace, git } = repository(t);
+  git("config", "alias.status", "!echo executed > alias-executed.txt");
+  const result = await executeGitStatus({ args: {}, enabled: true, workspace });
+  assert.equal(result.status, "success");
+  assert.deepEqual(result.data.entries, []);
+  assert.equal(existsSync(path.join(workspace, "alias-executed.txt")), false);
+});
+
+test("pre-cancelled calls do not resolve or access even a missing workspace", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const result = await executeGitStatus({
+    args: {},
+    enabled: true,
+    signal: controller.signal,
+    resolveWorkspace: async () => {
+      assert.fail("workspace must not be resolved");
+    },
+  });
+  assert.equal(result.status, "cancelled");
+  assert.equal(result.error.code, "cancelled");
+  await assert.rejects(
+    readGitStatus(
+      "nonexistent",
+      { timeoutMs: 10000, maxOutputBytes: 65536 },
+      controller.signal,
+    ),
+    { code: "cancelled" },
+  );
+});
+
+test("workspace resolution failures retain envelope identity and a single error code", async () => {
+  const result = await executeGitStatus({
+    args: {},
+    enabled: true,
+    invocationId: "host-error",
+    resolveWorkspace: async () => {
+      throw new Error("Workspace unavailable");
+    },
+  });
+  assert.equal(result.invocationId, "host-error");
+  assert.deepEqual(result.error, {
+    code: "tool_failed",
+    message: "Workspace unavailable",
+  });
+  const invalid = await executeGitStatus({
+    args: null,
+    enabled: true,
+    resolveWorkspace: async () => {
+      assert.fail("invalid args must not resolve workspace");
+    },
+  });
+  assert.equal(invalid.error.code, "invalid_arguments");
+  assert.equal(invalid.error.message.includes("invalid_arguments:"), false);
 });

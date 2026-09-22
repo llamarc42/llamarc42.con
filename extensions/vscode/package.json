@@ -132,7 +132,7 @@
           "type": "boolean",
           "default": false,
           "scope": "application",
-          "markdownDescription": "Enable the JSON-defined Git status tool. Requires Git and one workspace opened at a repository root. Uses the tool approval settings. Submodule changes are excluded in this first version. Reload the window after changing this setting."
+          "markdownDescription": "Enable the JSON-defined Git status tool for local workspaces. Requires Git and one workspace opened at a repository root. Remote/WSL/Codespaces execution is not supported yet. Uses the tool approval settings. Submodule changes are excluded in this first version. Reload the window after changing this setting."
         },
         "continue.enableConsole": {
           "type": "boolean",

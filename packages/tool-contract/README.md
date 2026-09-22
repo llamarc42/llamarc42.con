@@ -19,10 +19,16 @@ files being present beside the installed extension.
 
 In VS Code, enable **Continue: Enable Git Status Tool**, reload the window, and
 use Agent mode. The existing tool approval UI defaults to asking permission.
-Host enablement is checked again on every call. Open exactly one repository root
+Host enablement is checked again on every call. This slice supports local
+workspaces on Windows, macOS, and Linux; Remote/WSL/Codespaces discovery is disabled
+until execution can be routed to that workspace's host. Stale remote calls return
+a structured error rather than running Git locally. Open exactly one repository root
 as the workspace and have Git on PATH. Paths are repository-relative. Submodule
 changes are excluded; multi-root selection and arbitrary external tool manifests
 are not implemented in this slice.
+
+Successes and failures both reach the model as result envelopes, including invalid
+arguments, disabled calls, unavailable workspaces, and Git execution failures.
 
 Enabling a registry entry is not user approval to run it. This integration uses
 the existing Continue approval flow; it does not yet implement the design's
