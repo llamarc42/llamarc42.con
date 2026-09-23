@@ -75,4 +75,25 @@ exports.run = async function () {
   }
   assert.deepEqual(called, ["ls", "read_file", "git_status"]);
   assert.ok(answer.includes("L42-CI-CONTINUATION"));
+  await vscode.workspace
+    .getConfiguration("continue")
+    .update("enableGitStatusTool", false, vscode.ConfigurationTarget.Global);
+  await host.configHandler.reloadConfig("git-status-disabled-smoke");
+  const { config: disabledConfig } = await host.configHandler.loadConfig();
+  assert.ok(
+    !disabledConfig.tools.some((tool) => tool.function.name === "git_status"),
+  );
+  const stale = await host.core.invoke("tools/call", {
+    toolCall: {
+      id: "disabled-git-status",
+      type: "function",
+      function: { name: "git_status", arguments: "{}" },
+    },
+  });
+  assert.equal(stale.errorMessage, undefined);
+  const disabledEnvelope = JSON.parse(stale.contextItems[0].content);
+  assert.equal(disabledEnvelope.invocationId, "disabled-git-status");
+  assert.equal(disabledEnvelope.error.code, "tool_disabled");
+  assert.equal(disabledEnvelope.complete, false);
+  assert.equal(disabledEnvelope.data, undefined);
 };

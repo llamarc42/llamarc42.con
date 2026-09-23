@@ -12,8 +12,8 @@ validates calls/results without coercion. Unknown or disabled calls fail before
 any handler is selected.
 
 The first executable slice is `src/git-status.js`, using the bundled manifest in
-`manifests/git-status.json`. It validates arguments and results, runs a fixed Git
-command without a shell, bounds runtime and output, and returns a result envelope.
+`manifests/git-status.json`. It validates arguments and results, runs fixed Git
+commands without a shell, bounds runtime and output, and returns a result envelope.
 The schema is bundled with the extension; execution does not depend on source
 files being present beside the installed extension.
 
@@ -27,6 +27,25 @@ as the workspace and have Git on PATH. Paths are repository-relative. Submodule
 changes are excluded; multi-root selection and arbitrary external tool manifests
 are not implemented in this slice.
 
+The executable is resolved from absolute host PATH entries outside the workspace,
+including checks of symlink targets. Empty, relative, and workspace PATH entries
+are ignored. Metadata-only Git commands read configuration and repository paths;
+status uses a temporary private index, HEAD, and allowlisted configuration. The
+original index is never written. The temporary copy is removed after success,
+failure, timeout, or cancellation. A concurrent repository configuration change
+cannot introduce commands into that isolated status invocation.
+
+Content-filter commands (including Git LFS, clean filters, and persistent process
+filters) are never copied into the private configuration. Known driver names are
+retained as required drivers without executable commands: if status needs one,
+the tool returns `unsupported_repository` instead of comparing unfiltered content.
+Global/system filter definitions are included in this check. Sparse checkouts,
+split indexes, partial clones, and unusual filter names are currently unsupported
+on every OS. Ordinary repositories, unborn branches, and linked worktrees are
+supported. Repository metadata paths containing newlines are unsupported; filenames
+within an ordinary workspace remain NUL-delimited. The private index copy is
+limited to 128 MiB and each copied info/attributes or info/exclude file to 64 KiB.
+
 Successes and failures both reach the model as result envelopes, including invalid
 arguments, disabled calls, unavailable workspaces, and Git execution failures.
 
@@ -34,7 +53,8 @@ Enabling a registry entry is not user approval to run it. This integration uses
 the existing Continue approval flow; it does not yet implement the design's
 independent invocation-bound authorization broker. The executor accepts an abort
 signal, but the chat Stop button is not yet connected to it. A ten-second runtime
-limit and 64 KiB output limit apply. These remaining host features are required
+limit covers all subprocess phases and a cumulative 64 KiB subprocess output limit
+applies, in addition to the 64 KiB structured result limit. These remaining host features are required
 before claiming full conformance with the proposed execution contract.
 
 V1 accepts stable three-component tool versions, the `builtin` adapter, and the

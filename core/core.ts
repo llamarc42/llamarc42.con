@@ -20,6 +20,7 @@ import Ollama from "./llm/llms/Ollama";
 import { EditAggregator } from "./nextEdit/context/aggregateEdits";
 import { createNewPromptFileV2 } from "./promptFiles/createNewPromptFile";
 import { callTool } from "./tools/callTool";
+import { gitStatusTool } from "./tools/gitStatus";
 import { ChatDescriber } from "./util/chatDescriber";
 import { compactConversation } from "./util/conversationCompaction";
 import { GlobalContext } from "./util/GlobalContext";
@@ -1153,9 +1154,11 @@ export class Core {
       throw new Error("Config not loaded");
     }
 
-    const tool = config.tools.find(
-      (t) => t.function.name === toolCall.function.name,
-    );
+    // Discovery contains enabled tools only. Recognize this built-in even after
+    // a config reload so stale calls reach its enablement guard and envelope.
+    const tool =
+      config.tools.find((t) => t.function.name === toolCall.function.name) ??
+      (toolCall.function.name === "git_status" ? gitStatusTool() : undefined);
 
     if (!tool) {
       throw new Error(`Tool ${toolCall.function.name} not found`);
