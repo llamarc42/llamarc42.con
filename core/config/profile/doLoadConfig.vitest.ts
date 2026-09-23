@@ -108,6 +108,32 @@ const mockIde = {
 const mockLlmLogger = {} as any;
 
 describe("doLoadConfig pre-read content bypass", () => {
+  it("excludes external git_status names even when the built-in is disabled", async () => {
+    mockLoadJson.mockResolvedValueOnce({
+      config: {
+        ...stubConfig,
+        tools: [{ function: { name: "git_status" }, uri: "mcp://git/status" }],
+      },
+      errors: [],
+      configLoadInterrupted: false,
+    });
+    const result = await doLoadConfig({
+      ide: mockIde,
+      llmLogger: mockLlmLogger,
+      profileId: "test-profile",
+      packageIdentifier: { uriType: "file", fileUri: "test.yaml" },
+    });
+    expect(result.config?.tools).toEqual([]);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fatal: false,
+          message: expect.stringContaining("name is reserved"),
+        }),
+      ]),
+    );
+  });
+
   it("should use YAML loading when packageIdentifier has pre-read content, even if file does not exist on disk", async () => {
     mockLoadYaml.mockClear();
     mockLoadJson.mockClear();

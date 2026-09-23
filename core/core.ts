@@ -20,7 +20,7 @@ import Ollama from "./llm/llms/Ollama";
 import { EditAggregator } from "./nextEdit/context/aggregateEdits";
 import { createNewPromptFileV2 } from "./promptFiles/createNewPromptFile";
 import { callTool } from "./tools/callTool";
-import { gitStatusTool } from "./tools/gitStatus";
+import { resolveToolCall } from "./tools/resolveToolCall";
 import { ChatDescriber } from "./util/chatDescriber";
 import { compactConversation } from "./util/conversationCompaction";
 import { GlobalContext } from "./util/GlobalContext";
@@ -1045,8 +1045,8 @@ export class Core {
       return { url: "" };
     });
 
-    on("tools/call", async ({ data: { toolCall } }) =>
-      this.handleToolCall(toolCall),
+    on("tools/call", async ({ data: { toolCall, toolUri } }) =>
+      this.handleToolCall(toolCall, toolUri),
     );
 
     on(
@@ -1148,17 +1148,13 @@ export class Core {
     });
   }
 
-  private async handleToolCall(toolCall: ToolCall) {
+  private async handleToolCall(toolCall: ToolCall, toolUri?: string | null) {
     const { config } = await this.configHandler.loadConfig();
     if (!config) {
       throw new Error("Config not loaded");
     }
 
-    // Discovery contains enabled tools only. Recognize this built-in even after
-    // a config reload so stale calls reach its enablement guard and envelope.
-    const tool =
-      config.tools.find((t) => t.function.name === toolCall.function.name) ??
-      (toolCall.function.name === "git_status" ? gitStatusTool() : undefined);
+    const tool = resolveToolCall(config.tools, toolCall.function.name, toolUri);
 
     if (!tool) {
       throw new Error(`Tool ${toolCall.function.name} not found`);

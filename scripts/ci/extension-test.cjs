@@ -18,8 +18,24 @@ exports.run = async function () {
   const gitTool = tools.find((tool) => tool.function.name === "git_status");
   assert.equal(gitTool.defaultToolPolicy, "allowedWithPermission");
   assert.equal(gitTool.function.parameters.additionalProperties, false);
+  // A stored MCP identity, or an old call with no identity, must never invoke
+  // the now-enabled local built-in merely because its model-facing name matches.
+  for (const toolUri of ["mcp://removed-git-server/status", undefined]) {
+    await assert.rejects(
+      host.core.invoke("tools/call", {
+        toolUri,
+        toolCall: {
+          id: "stale-mcp-status",
+          type: "function",
+          function: { name: "git_status", arguments: "{}" },
+        },
+      }),
+      /Tool git_status not found/,
+    );
+  }
   for (const argumentsText of ["{", '{"command":"not allowed"}']) {
     const result = await host.core.invoke("tools/call", {
+      toolUri: gitTool.uri ?? null,
       toolCall: {
         id: "invalid-git-status",
         type: "function",
@@ -65,7 +81,13 @@ exports.run = async function () {
       ["ls", "read_file", "git_status"][called.length],
     );
     called.push(call.function.name);
-    const result = await host.core.invoke("tools/call", { toolCall: call });
+    const selectedTool = tools.find(
+      (tool) => tool.function.name === call.function.name,
+    );
+    const result = await host.core.invoke("tools/call", {
+      toolCall: call,
+      toolUri: selectedTool.uri ?? null,
+    });
     assert.ok(!result.errorMessage, result.errorMessage);
     messages.push({
       role: "tool",
@@ -84,6 +106,7 @@ exports.run = async function () {
     !disabledConfig.tools.some((tool) => tool.function.name === "git_status"),
   );
   const stale = await host.core.invoke("tools/call", {
+    toolUri: gitTool.uri ?? null,
     toolCall: {
       id: "disabled-git-status",
       type: "function",

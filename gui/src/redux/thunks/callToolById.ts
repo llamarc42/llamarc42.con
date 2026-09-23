@@ -78,6 +78,9 @@ export const callToolById = createAsyncThunk<
     // Tool is called on core side
     const result = await extra.ideMessenger.request("tools/call", {
       toolCall: toolCallState.toolCall,
+      toolUri: toolCallState.tool
+        ? (toolCallState.tool.uri ?? null)
+        : undefined,
     });
     if (result.status === "error") {
       throw new Error(result.error);

@@ -288,6 +288,18 @@ export default async function doLoadConfig(options: {
     }
   }
 
+  // Reserve the built-in name even while disabled, so MCP/custom tools cannot
+  // create ambiguous model calls or inherit its saved permission setting.
+  newConfig.tools = newConfig.tools.filter((tool) => {
+    if (tool.function.name !== "git_status") return true;
+    errors!.push({
+      fatal: false,
+      message:
+        'Tool "git_status" was excluded: this name is reserved for the built-in Git status tool. Rename the custom tool or MCP server to expose it under a different name.',
+    });
+    return false;
+  });
+
   newConfig.tools.push(
     ...(await getConfigDependentToolDefinitions({
       rules: newConfig.rules,

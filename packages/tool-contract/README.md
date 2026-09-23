@@ -51,6 +51,14 @@ limited to 128 MiB and each copied info/attributes or info/exclude file to 64 Ki
 Successes and failures both reach the model as result envelopes, including invalid
 arguments, disabled calls, unavailable workspaces, and Git execution failures.
 
+`git_status` is reserved for the built-in, including while disabled. Conflicting
+MCP/custom tools are excluded with a configuration warning; rename the MCP server
+or custom tool to expose a distinct name. The UI carries the selected tool's URI
+(or explicit built-in identity) through dispatch. Stale MCP calls and older
+name-only Git status calls fail as unknown host tools; request a fresh call in
+the updated extension. A known built-in call still returns `tool_disabled` after
+the setting is turned off. Tool identity is dispatch metadata, not authorization.
+
 Enabling a registry entry is not user approval to run it. This integration uses
 the existing Continue approval flow; it does not yet implement the design's
 independent invocation-bound authorization broker. The executor accepts an abort
