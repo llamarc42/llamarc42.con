@@ -14,14 +14,17 @@ import os from "node:os";
 import path from "node:path";
 import { ContractError } from "./index.js";
 
-function inside(root, candidate) {
-  const relative = path.relative(root, candidate);
-  return (
-    !relative ||
-    (!path.isAbsolute(relative) &&
-      relative !== ".." &&
-      !relative.startsWith(`..${path.sep}`))
-  );
+// Callers provide existing real paths. realpath resolves links but does not
+// promise case normalization on case-insensitive filesystems (notably macOS).
+// Compare directory identity instead of assuming path-string casing semantics.
+export async function inside(root, candidate) {
+  const rootIdentity = await stat(root, { bigint: true });
+  for (let current = candidate; ; current = path.dirname(current)) {
+    const identity = await stat(current, { bigint: true });
+    if (identity.dev === rootIdentity.dev && identity.ino === rootIdentity.ino)
+      return true;
+    if (path.dirname(current) === current) return false;
+  }
 }
 
 function launchError(error) {
@@ -42,13 +45,17 @@ async function findGit(workspace) {
     )?.[1] || "";
   let denied;
   for (const entry of searchPath.split(path.delimiter)) {
-    if (!path.isAbsolute(entry) || inside(workspace, path.resolve(entry)))
-      continue;
+    if (!path.isAbsolute(entry)) continue;
     try {
+      const directory = await realpath(entry);
+      if (await inside(workspace, directory)) continue;
       const candidate = await realpath(
-        path.join(entry, process.platform === "win32" ? "git.exe" : "git"),
+        path.join(directory, process.platform === "win32" ? "git.exe" : "git"),
       );
-      if (inside(workspace, candidate) || !(await stat(candidate)).isFile())
+      if (
+        (await inside(workspace, candidate)) ||
+        !(await stat(candidate)).isFile()
+      )
         continue;
       await access(candidate, constants.X_OK);
       return candidate;
@@ -261,7 +268,7 @@ export async function statusBytes(workspace, limits, signal) {
   });
   const executable = await findGit(cwd);
   const temporaryRoot = await realpath(os.tmpdir());
-  if (inside(cwd, temporaryRoot))
+  if (await inside(cwd, temporaryRoot))
     throw unsupported(
       "Git status requires a temporary directory outside the workspace",
     );

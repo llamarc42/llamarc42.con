@@ -28,7 +28,9 @@ changes are excluded; multi-root selection and arbitrary external tool manifests
 are not implemented in this slice.
 
 The executable is resolved from absolute host PATH entries outside the workspace,
-including checks of symlink targets. Empty, relative, and workspace PATH entries
+including checks of symlink targets. Containment compares device/inode identities
+along the resolved ancestor directories, so case-insensitive filesystem aliases
+cannot evade the check. Empty, relative, and workspace PATH entries
 are ignored. Metadata-only Git commands read configuration and repository paths;
 status uses a temporary private index, HEAD, and allowlisted configuration. The
 original index is never written. The temporary copy is removed after success,

@@ -15,6 +15,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
+import { realpath } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -24,6 +25,7 @@ import {
   parseStatus,
   readGitStatus,
 } from "../src/git-status.js";
+import { inside } from "../src/git-status-runtime.js";
 
 function fixture(t) {
   const root = mkdtempSync(path.join(os.tmpdir(), "git-status-security-"));
@@ -117,6 +119,62 @@ test("repository executables, relative PATH entries, and external links into the
   );
   process.env[key] = ["", ".", workspace, link].join(path.delimiter);
   assert.equal((await invoke()).error.code, "prerequisite_missing");
+});
+
+test("mixed-case filesystem aliases cannot select a checkout executable", async (t) => {
+  const { root, workspace, invoke } = fixture(t);
+  const alias = path.join(root, "CHECKOUT");
+  const caseInsensitive = existsSync(alias);
+  // Case-sensitive hosts still exercise a real alias; no platform skips. The
+  // macOS lane must exercise the actual case-insensitive-volume regression.
+  if (process.platform === "darwin")
+    assert.ok(
+      caseInsensitive,
+      "This regression requires a case-insensitive macOS CI volume",
+    );
+  if (!caseInsensitive) symlinkSync(workspace, alias, "dir");
+  const filename = process.platform === "win32" ? "git.exe" : "git";
+  copyFileSync(process.execPath, path.join(workspace, filename));
+  chmodSync(path.join(workspace, filename), 0o755);
+  const canonicalRoot = await realpath(workspace);
+  const canonicalCandidate = await realpath(path.join(alias, filename));
+  const relative = path.relative(canonicalRoot, canonicalCandidate);
+  const oldContains =
+    !relative ||
+    (!path.isAbsolute(relative) &&
+      relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`));
+  t.diagnostic(
+    JSON.stringify({
+      platform: process.platform,
+      caseInsensitive,
+      oldContains,
+      canonicalRoot,
+      canonicalCandidate,
+    }),
+  );
+  assert.equal(await inside(canonicalRoot, canonicalCandidate), true);
+  const key =
+    Object.keys(process.env).find((name) => name.toLowerCase() === "path") ||
+    "PATH";
+  const hostPath = process.env[key];
+  environment(t, key, [alias, hostPath].join(path.delimiter));
+  assert.equal((await invoke()).status, "success");
+  process.env[key] = alias;
+  assert.equal((await invoke()).error?.code, "prerequisite_missing");
+});
+
+test("filesystem containment distinguishes descendants from similarly named siblings", async (t) => {
+  const { root, workspace } = fixture(t);
+  const sibling = path.join(root, "checkout-other");
+  mkdirSync(sibling);
+  assert.equal(await inside(workspace, workspace), true);
+  assert.equal(
+    await inside(workspace, path.join(workspace, "tracked.txt")),
+    true,
+  );
+  assert.equal(await inside(workspace, sibling), false);
+  assert.equal(await inside(workspace, root), false);
 });
 
 for (const driver of ["clean", "process"]) {
