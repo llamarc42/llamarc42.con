@@ -31,9 +31,6 @@ export function gitStatusTool(): Tool {
 }
 
 export async function gitStatusImpl(args: unknown, extras: ToolExtras) {
-  // Recheck host enablement at invocation time, including calls from old chats.
-  const enabled =
-    (await extras.ide.getIdeSettings()).enableGitStatusTool === true;
   const result = await executeGitStatus({
     args,
     resolveWorkspace: async () => {
@@ -52,7 +49,9 @@ export async function gitStatusImpl(args: unknown, extras: ToolExtras) {
         );
       }
     },
-    enabled,
+    // Recheck even old calls, with settings failures inside the result envelope.
+    enabled: async () =>
+      (await extras.ide.getIdeSettings()).enableGitStatusTool === true,
     signal: undefined,
     invocationId: extras.toolCallId,
   });

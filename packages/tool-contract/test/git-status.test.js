@@ -40,6 +40,90 @@ test("production manifest is disabled by default and exposes only model fields",
   assert.equal(definition.function.name, "git_status");
 });
 
+test("metadata parent files and directories return unsupported_repository", async (t) => {
+  for (const kind of [
+    "parent-file",
+    "directory",
+    "index-directory",
+    "missing-info",
+  ]) {
+    await t.test(kind, async (t) => {
+      const { workspace } = repository(t);
+      const info = path.join(workspace, ".git", "info");
+      if (kind === "parent-file") {
+        renameSync(info, `${info}.saved`);
+        writeFileSync(info, "not a directory");
+      } else if (kind === "index-directory") {
+        const index = path.join(workspace, ".git", "index");
+        renameSync(index, `${index}.saved`);
+        mkdirSync(index);
+      } else if (kind === "missing-info") {
+        renameSync(info, `${info}.saved`);
+      } else {
+        mkdirSync(path.join(info, "attributes"));
+      }
+      const result = await executeGitStatus({
+        args: {},
+        workspace,
+        enabled: true,
+      });
+      if (kind === "missing-info") {
+        assert.equal(result.status, "success", JSON.stringify(result));
+        return;
+      }
+      assert.equal(result.status, "error");
+      assert.equal(
+        result.error.code,
+        "unsupported_repository",
+        JSON.stringify(result),
+      );
+      assert.equal(result.complete, false);
+      assert.equal(result.data, undefined);
+    });
+  }
+});
+
+test("enablement failures and non-Error rejections stay inside the envelope", async () => {
+  for (const failure of [
+    new Error("settings unavailable"),
+    null,
+    "settings unavailable",
+  ]) {
+    let touched = false;
+    const result = await executeGitStatus({
+      args: {},
+      enabled: async () => {
+        throw failure;
+      },
+      resolveWorkspace: async () => {
+        touched = true;
+        return "unused";
+      },
+      invocationId: "settings-failure",
+    });
+    assert.equal(result.invocationId, "settings-failure");
+    assert.equal(result.status, "error");
+    assert.equal(result.error.code, "tool_failed");
+    assert.equal(typeof result.error.message, "string");
+    assert.equal(result.complete, false);
+    assert.equal(touched, false);
+  }
+});
+
+test("pre-cancelled calls never read asynchronous host settings", async () => {
+  let touched = false;
+  const result = await executeGitStatus({
+    args: {},
+    enabled: async () => {
+      touched = true;
+      return true;
+    },
+    signal: AbortSignal.abort(),
+  });
+  assert.equal(result.error.code, "cancelled");
+  assert.equal(touched, false);
+});
+
 test("native Git returns clean, modified, untracked Unicode, and staged rename results", async (t) => {
   const { workspace, git } = repository(t);
   const invoke = () => executeGitStatus({ args: {}, workspace, enabled: true });

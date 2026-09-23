@@ -5,6 +5,38 @@ import { gitStatusImpl, gitStatusTool } from "./gitStatus";
 import { callTool } from "./callTool";
 
 describe("Git status host integration", () => {
+  it.each([new Error("settings unavailable"), null, "settings unavailable"])(
+    "returns settings failures through dispatch as structured output (%s)",
+    async (failure) => {
+      const getWorkspaceDirs = vi.fn();
+      const result = await callTool(
+        gitStatusTool(),
+        {
+          id: "settings-failure",
+          type: "function",
+          function: { name: "git_status", arguments: "{}" },
+        },
+        {
+          toolCallId: "settings-failure",
+          ide: {
+            getIdeSettings: async () => {
+              throw failure;
+            },
+            getWorkspaceDirs,
+          },
+        } as unknown as ToolExtras,
+      );
+      expect(result.errorMessage).toBeUndefined();
+      expect(JSON.parse(result.contextItems[0].content)).toMatchObject({
+        invocationId: "settings-failure",
+        status: "error",
+        complete: false,
+        error: { code: "tool_failed", message: expect.any(String) },
+      });
+      expect(getWorkspaceDirs).not.toHaveBeenCalled();
+    },
+  );
+
   it("publishes the JSON schema with approval required", () => {
     const tool = gitStatusTool();
     expect(tool.function.name).toBe("git_status");

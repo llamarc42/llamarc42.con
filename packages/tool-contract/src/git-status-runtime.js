@@ -211,10 +211,29 @@ function statusConfig(buffer) {
   return args;
 }
 
+async function checkMetadataType(source, directory = false) {
+  try {
+    const info = await stat(source);
+    if (directory ? !info.isDirectory() : !info.isFile())
+      throw unsupported(
+        "Repository metadata path has an unsupported file type",
+      );
+  } catch (error) {
+    if (error.code === "ENOTDIR" || error.code === "EISDIR")
+      throw unsupported(
+        "Repository metadata path has an unsupported file type",
+      );
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
 async function copyOptional(source, destination, maximum, check) {
   let input;
   let output;
   try {
+    // Check types before OS-specific open errors can obscure unsupported paths.
+    await checkMetadataType(path.dirname(source), true);
+    await checkMetadataType(source);
     input = await open(
       source,
       constants.O_RDONLY | (constants.O_NONBLOCK || 0),
@@ -243,6 +262,10 @@ async function copyOptional(source, destination, maximum, check) {
       await output.writeFile(buffer.subarray(0, bytesRead));
     }
   } catch (error) {
+    if (error.code === "ENOTDIR" || error.code === "EISDIR")
+      throw unsupported(
+        "Repository metadata path has an unsupported file type",
+      );
     if (error.code !== "ENOENT") throw error;
   } finally {
     await input?.close();
@@ -316,6 +339,28 @@ export async function statusBytes(workspace, limits, signal) {
         GIT_CONFIG_GLOBAL: undefined,
       }),
     );
+    // Git itself may reject a non-directory info/ while resolving --git-path.
+    // Resolve only repository directories first so we can classify that case
+    // consistently before requesting child paths. Linked worktrees share info/.
+    const directories = (
+      await run([
+        ...original,
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-common-dir",
+        "--absolute-git-dir",
+      ])
+    )
+      .toString("utf8")
+      .trimEnd()
+      .split("\n");
+    if (
+      directories.length !== 2 ||
+      !directories.every((value) => path.isAbsolute(value))
+    )
+      throw unsupported("Unsupported repository metadata directory paths");
+    await checkMetadataType(path.join(directories[0], "info"), true);
+    await checkMetadataType(path.join(directories[1], "index"));
     const paths = (
       await run([
         ...original,

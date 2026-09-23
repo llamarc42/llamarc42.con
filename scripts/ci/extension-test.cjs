@@ -18,6 +18,29 @@ exports.run = async function () {
   const gitTool = tools.find((tool) => tool.function.name === "git_status");
   assert.equal(gitTool.defaultToolPolicy, "allowedWithPermission");
   assert.equal(gitTool.function.parameters.additionalProperties, false);
+  const originalGetIdeSettings = host.core.ide.getIdeSettings;
+  try {
+    host.core.ide.getIdeSettings = async () => {
+      throw new Error("smoke settings failure");
+    };
+    const result = await host.core.invoke("tools/call", {
+      toolUri: null,
+      toolCall: {
+        id: "settings-failure",
+        type: "function",
+        function: { name: "git_status", arguments: "{}" },
+      },
+    });
+    assert.equal(result.errorMessage, undefined);
+    assert.equal(result.contextItems.length, 1);
+    const envelope = JSON.parse(result.contextItems[0].content);
+    assert.equal(envelope.invocationId, "settings-failure");
+    assert.equal(envelope.error.code, "tool_failed");
+    assert.equal(envelope.error.message, "smoke settings failure");
+    assert.equal(envelope.complete, false);
+  } finally {
+    host.core.ide.getIdeSettings = originalGetIdeSettings;
+  }
   // A stored MCP identity, or an old call with no identity, must never invoke
   // the now-enabled local built-in merely because its model-facing name matches.
   for (const toolUri of ["mcp://removed-git-server/status", undefined]) {

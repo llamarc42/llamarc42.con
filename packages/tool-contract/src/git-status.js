@@ -51,7 +51,7 @@ export async function readGitStatus(workspace, limits, signal) {
   return parseStatus(await statusBytes(workspace, limits, signal));
 }
 
-/** @param {{args: unknown, workspace?: string, resolveWorkspace?: () => Promise<string>, enabled: boolean, signal?: AbortSignal, invocationId?: string}} options */
+/** @param {{args: unknown, workspace?: string, resolveWorkspace?: () => Promise<string>, enabled: boolean | (() => Promise<boolean>), signal?: AbortSignal, invocationId?: string}} options */
 export async function executeGitStatus({
   args,
   workspace,
@@ -61,16 +61,23 @@ export async function executeGitStatus({
   invocationId = randomUUID(),
 }) {
   const started = performance.now();
-  const { registry, manifest } = gitStatusRegistry(enabled);
+  const { registry, manifest } = gitStatusRegistry();
   const envelope = {
     invocationId,
     toolId: manifest.id,
     version: manifest.version,
   };
   try {
-    registry.validateCall(manifest.name, args);
     if (signal?.aborted)
       throw new ContractError("cancelled", "Invocation cancelled");
+    // Resolve host settings inside the same error boundary as execution.
+    registry.setEnabled(
+      manifest.id,
+      typeof enabled === "function" ? await enabled() : enabled,
+    );
+    if (signal?.aborted)
+      throw new ContractError("cancelled", "Invocation cancelled");
+    registry.validateCall(manifest.name, args);
     const selectedWorkspace = resolveWorkspace
       ? await resolveWorkspace()
       : workspace;
@@ -102,7 +109,9 @@ export async function executeGitStatus({
         message:
           error instanceof ContractError
             ? error.message.slice(code.length + 2)
-            : error.message,
+            : error instanceof Error
+              ? error.message
+              : String(error),
       },
       complete: false,
       durationMs: performance.now() - started,

@@ -50,6 +50,11 @@ limited to 128 MiB and each copied info/attributes or info/exclude file to 64 Ki
 
 Successes and failures both reach the model as result envelopes, including invalid
 arguments, disabled calls, unavailable workspaces, and Git execution failures.
+Host settings are resolved inside that same error boundary; an unavailable
+settings service returns `tool_failed` without accessing the workspace. Metadata
+files with unsupported types, including a file in place of the metadata parent
+directory, return `unsupported_repository` on every supported OS. Missing
+optional metadata remains allowed; opened files are checked again before copying.
 
 `git_status` is reserved for the built-in, including while disabled. Conflicting
 MCP/custom tools are excluded with a configuration warning; rename the MCP server

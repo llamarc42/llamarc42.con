@@ -28,7 +28,7 @@ export function executeGitStatus(options: {
   args: unknown;
   workspace?: string;
   resolveWorkspace?: () => Promise<string>;
-  enabled: boolean;
+  enabled: boolean | (() => Promise<boolean>);
   signal?: AbortSignal;
   invocationId?: string;
 }): Promise<GitStatusResult>;
