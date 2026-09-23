@@ -656,6 +656,7 @@ declare global {
   }
   
   export interface IdeSettings {
+    enableGitStatusTool?: boolean;
     remoteConfigServerUrl: string | undefined;
     remoteConfigSyncPeriod: number;
     userToken: string;
