@@ -21,6 +21,8 @@ export function resolveToolCall(
   return tools.find(
     (tool) =>
       tool.function.name === name &&
-      (toolUri === undefined || (tool.uri ?? null) === toolUri),
+      (toolUri === undefined
+        ? !/^mcp:/i.test(tool.uri ?? "")
+        : (tool.uri ?? null) === toolUri),
   );
 }

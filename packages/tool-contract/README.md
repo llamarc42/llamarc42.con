@@ -63,6 +63,11 @@ or custom tool to expose a distinct name. The UI carries the selected tool's URI
 name-only Git status calls fail as unknown host tools; request a fresh call in
 the updated extension. A known built-in call still returns `tool_disabled` after
 the setting is turned off. Tool identity is dispatch metadata, not authorization.
+Embedded MCP apps carry the original server identity when requesting sibling
+tools. MCP calls without saved identity are rejected instead of selecting a
+same-name tool from a replacement server. Git metadata records preserve trailing
+path whitespace; invalid UTF-8 and ambiguous newline-delimited paths are rejected
+as `unsupported_repository` rather than decoded into a different path.
 
 Enabling a registry entry is not user approval to run it. This integration uses
 the existing Continue approval flow; it does not yet implement the design's

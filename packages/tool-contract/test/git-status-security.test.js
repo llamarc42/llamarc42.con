@@ -25,7 +25,27 @@ import {
   parseStatus,
   readGitStatus,
 } from "../src/git-status.js";
-import { inside } from "../src/git-status-runtime.js";
+import { inside, parseMetadataLines } from "../src/git-status-runtime.js";
+
+test("metadata parsing preserves path whitespace and rejects lossy or ambiguous records", () => {
+  for (const suffix of [" ", "\t", "\r"]) {
+    const directory = `/repo/git-dir${suffix}`;
+    assert.deepEqual(
+      parseMetadataLines(Buffer.from(`/repo/common\n${directory}\n`), 2),
+      ["/repo/common", directory],
+    );
+  }
+  for (const bytes of [
+    Buffer.from("/repo/common\n/repo/git-dir"),
+    Buffer.from("/repo/common\n/repo/git\n-dir\n"),
+    Buffer.from("/repo/common\n/repo/\0git-dir\n"),
+    Buffer.from([0x2f, 0xff, 0x0a]),
+  ]) {
+    assert.throws(() => parseMetadataLines(bytes, 2), {
+      code: "unsupported_repository",
+    });
+  }
+});
 
 function fixture(t) {
   const root = mkdtempSync(path.join(os.tmpdir(), "git-status-security-"));

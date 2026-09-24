@@ -49,6 +49,7 @@ describe("tool dispatch identity", () => {
       function: { ...mcp.function, name: "other_status" },
     };
     expect(resolveToolCall([tool], "other_status", tool.uri)).toBe(tool);
+    expect(resolveToolCall([tool], "other_status")).toBeUndefined();
     expect(resolveToolCall([], "other_status", tool.uri)).toBeUndefined();
     expect(
       resolveToolCall(

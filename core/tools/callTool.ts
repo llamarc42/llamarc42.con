@@ -5,6 +5,8 @@ import { ContinueError, ContinueErrorReason } from "../util/errors";
 import { canParseUrl } from "../util/url";
 import { BuiltInToolNames } from "./builtIn";
 import { gitStatusImpl, parseGitStatusArgs } from "./gitStatus";
+import { decodeMCPToolUri } from "./mcpToolUri";
+export { decodeMCPToolUri, encodeMCPToolUri } from "./mcpToolUri";
 
 import { codebaseToolImpl } from "./implementations/codebaseTool";
 import { createNewFileImpl } from "./implementations/createNewFile";
@@ -48,21 +50,6 @@ async function callHttpTool(
   }
 
   return data.output;
-}
-
-export function encodeMCPToolUri(mcpId: string, toolName: string): string {
-  return `mcp://${encodeURIComponent(mcpId)}/${encodeURIComponent(toolName)}`;
-}
-
-export function decodeMCPToolUri(uri: string): [string, string] | null {
-  const url = new URL(uri);
-  if (url.protocol !== "mcp:") {
-    return null;
-  }
-  return [
-    decodeURIComponent(url.hostname),
-    decodeURIComponent(url.pathname).slice(1), // to remove leading '/'
-  ];
 }
 
 async function callToolFromUri(

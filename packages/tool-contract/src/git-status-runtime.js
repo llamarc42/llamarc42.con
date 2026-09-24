@@ -150,6 +150,25 @@ function unsupported(detail) {
   return new ContractError("unsupported_repository", detail);
 }
 
+export function parseMetadataLines(buffer, count) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    throw unsupported("Repository metadata paths must be UTF-8");
+  }
+  // Remove exactly Git's record terminator, never whitespace from a path.
+  if (!text.endsWith("\n"))
+    throw unsupported("Incomplete repository metadata paths");
+  const lines = text.slice(0, -1).split("\n");
+  if (
+    lines.length !== count ||
+    lines.some((line) => !line || line.includes("\0"))
+  )
+    throw unsupported("Unsupported repository metadata paths");
+  return lines;
+}
+
 // Config values are passed as individual arguments, never serialized as config
 // syntax. Only settings that affect ordinary status semantics are retained.
 function statusConfig(buffer) {
@@ -342,18 +361,16 @@ export async function statusBytes(workspace, limits, signal) {
     // Git itself may reject a non-directory info/ while resolving --git-path.
     // Resolve only repository directories first so we can classify that case
     // consistently before requesting child paths. Linked worktrees share info/.
-    const directories = (
+    const directories = parseMetadataLines(
       await run([
         ...original,
         "rev-parse",
         "--path-format=absolute",
         "--git-common-dir",
         "--absolute-git-dir",
-      ])
-    )
-      .toString("utf8")
-      .trimEnd()
-      .split("\n");
+      ]),
+      2,
+    );
     if (
       directories.length !== 2 ||
       !directories.every((value) => path.isAbsolute(value))
@@ -361,7 +378,7 @@ export async function statusBytes(workspace, limits, signal) {
       throw unsupported("Unsupported repository metadata directory paths");
     await checkMetadataType(path.join(directories[0], "info"), true);
     await checkMetadataType(path.join(directories[1], "index"));
-    const paths = (
+    const paths = parseMetadataLines(
       await run([
         ...original,
         "rev-parse",
@@ -375,11 +392,9 @@ export async function statusBytes(workspace, limits, signal) {
         "--git-path",
         "info/attributes",
         "--show-object-format",
-      ])
-    )
-      .toString("utf8")
-      .trimEnd()
-      .split("\n");
+      ]),
+      5,
+    );
     if (
       paths.length !== 5 ||
       !paths.slice(0, 4).every((value) => path.isAbsolute(value)) ||
