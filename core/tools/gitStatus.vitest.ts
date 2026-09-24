@@ -5,6 +5,43 @@ import { gitStatusImpl, gitStatusTool } from "./gitStatus";
 import { callTool } from "./callTool";
 
 describe("Git status host integration", () => {
+  it.each([{}, { unexpected: true }, [], null, 0, "null", "[]", ""])(
+    "validates parsed and serialized arguments without coercion (%j)",
+    async (args) => {
+      const getWorkspaceDirs = vi.fn().mockResolvedValue([]);
+      const result = await callTool(
+        gitStatusTool(),
+        {
+          id: "parsed-args",
+          type: "function",
+          function: {
+            name: "git_status",
+            arguments: args as unknown as string,
+          },
+        },
+        {
+          ide: {
+            getIdeSettings: async () => ({ enableGitStatusTool: true }),
+            isWorkspaceRemote: async () => false,
+            getWorkspaceDirs,
+          },
+        } as unknown as ToolExtras,
+      );
+      const envelope = JSON.parse(result.contextItems[0].content);
+      if (
+        args &&
+        typeof args === "object" &&
+        !Array.isArray(args) &&
+        !Object.keys(args).length
+      ) {
+        expect(getWorkspaceDirs).toHaveBeenCalledOnce();
+        expect(envelope.error.message).toContain("exactly one workspace");
+      } else {
+        expect(envelope.error.code).toBe("invalid_arguments");
+        expect(getWorkspaceDirs).not.toHaveBeenCalled();
+      }
+    },
+  );
   it.each([new Error("settings unavailable"), null, "settings unavailable"])(
     "returns settings failures through dispatch as structured output (%s)",
     async (failure) => {

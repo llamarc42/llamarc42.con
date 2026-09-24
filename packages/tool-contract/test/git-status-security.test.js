@@ -96,6 +96,53 @@ function replaceSpawn(t, replacement) {
   return original;
 }
 
+for (const [version, supported] of [
+  ["git version 1.99.0\n", false],
+  ["git version 2.30.9\n", false],
+  ["unrecognized output\n", false],
+  ["git version 2.31.0\n", true],
+  ["git version 2.53.0.windows.1\n", true],
+  ["git version 2.39.5 (Apple Git-154)\n", true],
+  ["git version 2.43.0-ubuntu1\n", true],
+  ["git version 3.0.0\n", true],
+]) {
+  test(`Git prerequisite: ${version.trim()}`, async (t) => {
+    const { invoke } = fixture(t);
+    const nativeSpawn = cp.spawn;
+    let repositoryCommands = 0;
+    let versionChecks = 0;
+    let temporary;
+    replaceSpawn(t, (executable, args, options) => {
+      if (args[0] !== "--version") {
+        repositoryCommands++;
+        return nativeSpawn(executable, args, options);
+      }
+      versionChecks++;
+      temporary = options.cwd;
+      const child = new EventEmitter();
+      child.stdout = new PassThrough();
+      child.stderr = new PassThrough();
+      child.kill = () => true;
+      queueMicrotask(() => {
+        child.stdout.end(version);
+        child.emit("close", 0);
+      });
+      return child;
+    });
+    const result = await invoke();
+    assert.equal(versionChecks, 1);
+    if (supported) {
+      assert.equal(result.status, "success", JSON.stringify(result));
+      assert.ok(repositoryCommands > 0);
+    } else {
+      assert.equal(result.error.code, "prerequisite_missing");
+      assert.match(result.error.message, /Git 2\.31\.0 or newer/);
+      assert.equal(repositoryCommands, 0);
+    }
+    assert.equal(existsSync(temporary), false);
+  });
+}
+
 function modified(workspace) {
   const file = path.join(workspace, "tracked.txt");
   writeFileSync(file, "modified\n");

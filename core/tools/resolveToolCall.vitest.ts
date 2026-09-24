@@ -8,6 +8,22 @@ describe("tool dispatch identity", () => {
   const builtin = gitStatusTool();
   const mcp = { ...builtin, uri: "mcp://git-server/status" };
 
+  it.each([undefined, "https://tools.example/status", "mcp://server/status"])(
+    "requires a captured identity for every handler (%s)",
+    (uri) => {
+      const tool = {
+        ...builtin,
+        uri,
+        function: { ...builtin.function, name: "other_status" },
+      };
+      expect(resolveToolCall([tool], "other_status")).toBeUndefined();
+      expect(resolveToolCall([tool], "other_status", uri ?? null)).toBe(tool);
+      expect(
+        resolveToolCall([tool], "other_status", "mcp://removed/status"),
+      ).toBeUndefined();
+    },
+  );
+
   it.each([[], [builtin], [mcp], [mcp, builtin]])(
     "never substitutes local Git for stale MCP or unidentified calls (%#)",
     (...tools) => {

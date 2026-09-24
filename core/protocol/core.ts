@@ -304,7 +304,7 @@ export type ToCoreFromIdeOrWebviewProtocol = {
     {
       toolCall: ToolCall;
       // Captured from the selected tool, never the model. null means built-in;
-      // omitted means legacy/unknown identity and cannot invoke git_status or MCP tools.
+      // omitted means legacy/unknown identity and cannot invoke any tool.
       toolUri?: string | null;
     },
     {

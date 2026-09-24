@@ -7,6 +7,8 @@ export function resolveToolCall(
   name: string,
   toolUri?: string | null,
 ): Tool | undefined {
+  // Missing identity is ambiguous even when the current candidate is local.
+  if (toolUri === undefined) return undefined;
   if (name === "git_status") {
     // This name is reserved for the built-in. Old name-only calls and MCP calls
     // cannot establish that identity, even when the built-in is now enabled.
@@ -19,10 +21,6 @@ export function resolveToolCall(
     );
   }
   return tools.find(
-    (tool) =>
-      tool.function.name === name &&
-      (toolUri === undefined
-        ? !/^mcp:/i.test(tool.uri ?? "")
-        : (tool.uri ?? null) === toolUri),
+    (tool) => tool.function.name === name && (tool.uri ?? null) === toolUri,
   );
 }

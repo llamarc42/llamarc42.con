@@ -56,7 +56,23 @@ exports.run = async function () {
       /Tool git_status not found/,
     );
   }
-  for (const argumentsText of ["{", '{"command":"not allowed"}']) {
+  await assert.rejects(
+    host.core.invoke("tools/call", {
+      toolCall: {
+        id: "unknown-local-identity",
+        type: "function",
+        function: { name: "ls", arguments: "{}" },
+      },
+    }),
+    /Tool ls not found/,
+  );
+  for (const argumentsText of [
+    "{",
+    '{"command":"not allowed"}',
+    { command: "not allowed" },
+    null,
+    [],
+  ]) {
     const result = await host.core.invoke("tools/call", {
       toolUri: gitTool.uri ?? null,
       toolCall: {
@@ -72,6 +88,18 @@ exports.run = async function () {
     assert.equal(envelope.error.code, "invalid_arguments");
     assert.equal(envelope.complete, false);
   }
+  const parsedArguments = await host.core.invoke("tools/call", {
+    toolUri: null,
+    toolCall: {
+      id: "parsed-git-status",
+      type: "function",
+      function: { name: "git_status", arguments: {} },
+    },
+  });
+  assert.equal(
+    JSON.parse(parsedArguments.contextItems[0].content).status,
+    "success",
+  );
   const messages = [
     {
       role: "user",

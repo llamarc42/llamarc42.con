@@ -6,7 +6,9 @@ import {
   gitStatusRegistry,
 } from "../../packages/tool-contract/src/git-status.js";
 
-export function parseGitStatusArgs(raw: string): unknown {
+export function parseGitStatusArgs(raw: unknown): unknown {
+  // Some providers already supply parsed arguments. Validate them unchanged.
+  if (typeof raw !== "string") return raw;
   try {
     return JSON.parse(raw);
   } catch {

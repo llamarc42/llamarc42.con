@@ -23,7 +23,10 @@ Host enablement is checked again on every call. This slice supports local
 workspaces on Windows, macOS, and Linux; Remote/WSL/Codespaces discovery is disabled
 until execution can be routed to that workspace's host. Stale remote calls return
 a structured error rather than running Git locally. Open exactly one repository root
-as the workspace and have Git on PATH. Paths are repository-relative. Submodule
+as the workspace and have Git 2.31.0 or newer on PATH. Older or unrecognized Git
+versions return `prerequisite_missing` before repository commands run. This minimum
+provides [`rev-parse --path-format`](https://github.com/git/git/blob/v2.31.0/Documentation/RelNotes/2.31.0.txt)
+on all three platforms. Paths are repository-relative. Submodule
 changes are excluded; multi-root selection and arbitrary external tool manifests
 are not implemented in this slice.
 
@@ -50,6 +53,8 @@ limited to 128 MiB and each copied info/attributes or info/exclude file to 64 Ki
 
 Successes and failures both reach the model as result envelopes, including invalid
 arguments, disabled calls, unavailable workspaces, and Git execution failures.
+Arguments may arrive as JSON text or an already parsed object; both must satisfy
+the same empty-object schema. Malformed JSON is never repaired into a valid call.
 Host settings are resolved inside that same error boundary; an unavailable
 settings service returns `tool_failed` without accessing the workspace. Metadata
 files with unsupported types, including a file in place of the metadata parent
@@ -60,12 +65,12 @@ optional metadata remains allowed; opened files are checked again before copying
 MCP/custom tools are excluded with a configuration warning; rename the MCP server
 or custom tool to expose a distinct name. The UI carries the selected tool's URI
 (or explicit built-in identity) through dispatch. Stale MCP calls and older
-name-only Git status calls fail as unknown host tools; request a fresh call in
+name-only calls fail as unknown host tools; request a fresh call in
 the updated extension. A known built-in call still returns `tool_disabled` after
 the setting is turned off. Tool identity is dispatch metadata, not authorization.
 Embedded MCP apps carry the original server identity when requesting sibling
-tools. MCP calls without saved identity are rejected instead of selecting a
-same-name tool from a replacement server. Git metadata records preserve trailing
+tools. All calls without saved identity are rejected instead of selecting a
+same-name local, HTTP, or MCP tool. Git metadata records preserve trailing
 path whitespace; invalid UTF-8 and ambiguous newline-delimited paths are rejected
 as `unsupported_repository` rather than decoded into a different path.
 

@@ -150,6 +150,24 @@ function unsupported(detail) {
   return new ContractError("unsupported_repository", detail);
 }
 
+function requireGitVersion(buffer) {
+  // Accept vendor suffixes (Windows, Apple, distro builds) after the numeric
+  // version. --path-format was introduced in Git 2.31.
+  const version = /^git version (\d+)\.(\d+)\.(\d+)(?=[.\s-]|$)/.exec(
+    buffer.toString("utf8"),
+  );
+  if (
+    !version ||
+    Number(version[1]) < 2 ||
+    (Number(version[1]) === 2 && Number(version[2]) < 31)
+  ) {
+    throw new ContractError(
+      "prerequisite_missing",
+      "Git 2.31.0 or newer is required; install a supported Git version and restart the editor",
+    );
+  }
+}
+
 export function parseMetadataLines(buffer, count) {
   let text;
   try {
@@ -341,6 +359,7 @@ export async function statusBytes(workspace, limits, signal) {
       signal,
       deadline,
     );
+    requireGitVersion(await run(["--version"]));
     const original = [
       "-C",
       cwd,
