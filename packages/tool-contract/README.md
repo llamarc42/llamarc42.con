@@ -11,12 +11,86 @@ names and understated effects, keeps tools disabled until explicitly enabled, an
 validates calls/results without coercion. Unknown or disabled calls fail before
 any handler is selected.
 
-This package does not execute tools, grant permissions, discover configuration,
-or change the Continue UI. Enabling a registry entry is not user approval to run
-it. Host dispatch still needs invocation-bound authorization, limits, cancellation,
-and result envelopes before runtime integration is complete.
+The first executable slice is `src/git-status.js`, using the bundled manifest in
+`manifests/git-status.json`. It validates arguments and results, runs fixed Git
+commands without a shell, bounds runtime and output, and returns a result envelope.
+The schema is bundled with the extension; execution does not depend on source
+files being present beside the installed extension.
 
-The `git-status.json` fixture describes the first proposed handler. It does not
-install or implement that handler. V1 currently accepts stable three-component
-tool versions, the `builtin` adapter, and the four documented effects. Other
-adapters require an explicit contract extension.
+In VS Code, enable **Continue: Enable Git Status Tool**, reload the window, and
+use Agent mode. The existing tool approval UI defaults to asking permission.
+Host enablement is checked again on every call. This slice supports local
+workspaces on Windows, macOS, and Linux; Remote/WSL/Codespaces discovery is disabled
+until execution can be routed to that workspace's host. Stale remote calls return
+a structured error rather than running Git locally. Open exactly one repository root
+as the workspace and have Git 2.31.0 or newer on PATH. Older or unrecognized Git
+versions return `prerequisite_missing` before repository commands run. This minimum
+provides [`rev-parse --path-format`](https://github.com/git/git/blob/v2.31.0/Documentation/RelNotes/2.31.0.txt)
+on all three platforms. Paths are repository-relative. Submodule
+changes are excluded; multi-root selection and arbitrary external tool manifests
+are not implemented in this slice.
+
+The executable is resolved from absolute host PATH entries outside the workspace,
+including checks of symlink targets. Containment compares device/inode identities
+along the resolved ancestor directories, so case-insensitive filesystem aliases
+cannot evade the check. Empty, relative, and workspace PATH entries
+are ignored. Metadata-only Git commands read configuration and repository paths;
+status uses a temporary private index, HEAD, and allowlisted configuration. The
+original index is never written. The temporary copy is removed after success,
+failure, timeout, or cancellation. A concurrent repository configuration change
+cannot introduce commands into that isolated status invocation.
+
+Content-filter commands (including Git LFS, clean filters, and persistent process
+filters) are never copied into the private configuration. Known driver names are
+retained as required drivers without executable commands: if status needs one,
+the tool returns `unsupported_repository` instead of comparing unfiltered content.
+Global/system filter definitions are included in this check. Sparse checkouts,
+split indexes, partial clones, and unusual filter names are currently unsupported
+on every OS. Ordinary repositories, unborn branches, and linked worktrees are
+supported. Repository metadata paths containing newlines are unsupported; filenames
+within an ordinary workspace remain NUL-delimited. The private index copy is
+limited to 128 MiB and each copied info/attributes or info/exclude file to 64 KiB.
+
+Successes and failures both reach the model as result envelopes, including invalid
+arguments, disabled calls, unavailable workspaces, and Git execution failures.
+Arguments may arrive as JSON text or an already parsed object; both must satisfy
+the same empty-object schema. Malformed JSON is never repaired into a valid call.
+Host settings are resolved inside that same error boundary; an unavailable
+settings service returns `tool_failed` without accessing the workspace. Metadata
+files with unsupported types, including a file in place of the metadata parent
+directory, return `unsupported_repository` on every supported OS. Missing
+optional metadata remains allowed; opened files are checked again before copying.
+Metadata files and directory components below the declared Git directory must
+not be symlinks (including Windows junctions). Copies use no-follow opens where
+available and compare the opened file's device/inode identity with snapshots of
+the path components before any bytes are read. A replacement during opening
+returns `unsupported_repository`, including when the original path is restored.
+Declared linked-worktree metadata directories remain supported.
+
+`git_status` is reserved for the built-in, including while disabled. Conflicting
+MCP/custom tools are excluded with a configuration warning; rename the MCP server
+or custom tool to expose a distinct name. The UI carries the selected tool's URI
+(or explicit built-in identity) through dispatch. Stale MCP calls and older
+name-only calls fail as unknown host tools; request a fresh call in
+the updated extension. A known built-in call still returns `tool_disabled` after
+the setting is turned off. Tool identity is dispatch metadata, not authorization.
+Embedded MCP apps carry the original server identity when requesting sibling
+tools. All calls without saved identity are rejected instead of selecting a
+same-name local, HTTP, or MCP tool. Git metadata records preserve trailing
+path whitespace; invalid UTF-8 and ambiguous newline-delimited paths are rejected
+as `unsupported_repository` rather than decoded into a different path.
+All duplicate tool names are excluded during configuration loading with a warning;
+no first-match handler is selected. Calls capture identity from the active tools
+offered in that model request, so a configuration reload during streaming cannot
+assign a replacement handler to the generated call.
+
+Enabling a registry entry is not user approval to run it. This integration uses
+the existing Continue approval flow; it does not yet implement the design's
+independent invocation-bound authorization broker. The executor accepts an abort
+signal, but the chat Stop button is not yet connected to it. A ten-second runtime
+limit covers all subprocess phases and a cumulative 64 KiB subprocess output limit
+applies, in addition to the 64 KiB structured result limit. These remaining host features are required
+before claiming full conformance with the proposed execution contract.
+
+V1 accepts stable three-component tool versions, the `builtin` adapter, and the
+four documented effects. Other adapters require an explicit contract extension.

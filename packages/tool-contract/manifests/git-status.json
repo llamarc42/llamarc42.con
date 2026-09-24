@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "llamarc42.git.status",
+  "version": "1.0.0",
+  "name": "git_status",
+  "displayName": "Git status",
+  "description": "Read changed and untracked paths in the single workspace repository root. Submodule changes are excluded. Takes no arguments.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "entries": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "indexStatus": { "type": "string" },
+            "worktreeStatus": { "type": "string" },
+            "originalPath": { "type": "string" }
+          },
+          "required": ["path", "indexStatus", "worktreeStatus"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["entries"],
+    "additionalProperties": false
+  },
+  "handler": { "adapter": "builtin", "id": "git.status" },
+  "effects": ["workspace.read", "process.execute"],
+  "limits": { "timeoutMs": 10000, "maxOutputBytes": 65536 }
+}

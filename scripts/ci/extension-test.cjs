@@ -12,9 +12,94 @@ exports.run = async function () {
   const model = config.selectedModelByRole.chat;
   assert.equal(model.model, "qwen3-coder:30b");
   const tools = config.tools.filter((tool) =>
-    ["ls", "read_file"].includes(tool.function.name),
+    ["ls", "read_file", "git_status"].includes(tool.function.name),
   );
-  assert.equal(tools.length, 2);
+  assert.equal(tools.length, 3);
+  const gitTool = tools.find((tool) => tool.function.name === "git_status");
+  assert.equal(gitTool.defaultToolPolicy, "allowedWithPermission");
+  assert.equal(gitTool.function.parameters.additionalProperties, false);
+  const originalGetIdeSettings = host.core.ide.getIdeSettings;
+  try {
+    host.core.ide.getIdeSettings = async () => {
+      throw new Error("smoke settings failure");
+    };
+    const result = await host.core.invoke("tools/call", {
+      toolUri: null,
+      toolCall: {
+        id: "settings-failure",
+        type: "function",
+        function: { name: "git_status", arguments: "{}" },
+      },
+    });
+    assert.equal(result.errorMessage, undefined);
+    assert.equal(result.contextItems.length, 1);
+    const envelope = JSON.parse(result.contextItems[0].content);
+    assert.equal(envelope.invocationId, "settings-failure");
+    assert.equal(envelope.error.code, "tool_failed");
+    assert.equal(envelope.error.message, "smoke settings failure");
+    assert.equal(envelope.complete, false);
+  } finally {
+    host.core.ide.getIdeSettings = originalGetIdeSettings;
+  }
+  // A stored MCP identity, or an old call with no identity, must never invoke
+  // the now-enabled local built-in merely because its model-facing name matches.
+  for (const toolUri of ["mcp://removed-git-server/status", undefined]) {
+    await assert.rejects(
+      host.core.invoke("tools/call", {
+        toolUri,
+        toolCall: {
+          id: "stale-mcp-status",
+          type: "function",
+          function: { name: "git_status", arguments: "{}" },
+        },
+      }),
+      /Tool git_status not found/,
+    );
+  }
+  await assert.rejects(
+    host.core.invoke("tools/call", {
+      toolCall: {
+        id: "unknown-local-identity",
+        type: "function",
+        function: { name: "ls", arguments: "{}" },
+      },
+    }),
+    /Tool ls not found/,
+  );
+  for (const argumentsText of [
+    "{",
+    '{"command":"not allowed"}',
+    { command: "not allowed" },
+    null,
+    [],
+  ]) {
+    const result = await host.core.invoke("tools/call", {
+      toolUri: gitTool.uri ?? null,
+      toolCall: {
+        id: "invalid-git-status",
+        type: "function",
+        function: { name: "git_status", arguments: argumentsText },
+      },
+    });
+    assert.equal(result.errorMessage, undefined);
+    const envelope = JSON.parse(result.contextItems[0].content);
+    assert.equal(envelope.invocationId, "invalid-git-status");
+    assert.equal(envelope.status, "error");
+    assert.equal(envelope.error.code, "invalid_arguments");
+    assert.equal(envelope.complete, false);
+  }
+  const parsedArguments = await host.core.invoke("tools/call", {
+    toolUri: null,
+    toolCall: {
+      id: "parsed-git-status",
+      type: "function",
+      function: { name: "git_status", arguments: {} },
+    },
+  });
+  assert.equal(
+    JSON.parse(parsedArguments.contextItems[0].content).status,
+    "success",
+  );
   const messages = [
     {
       role: "user",
@@ -24,7 +109,7 @@ exports.run = async function () {
   ];
   const called = [];
   let answer = "";
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < 4; round++) {
     const assistant = { role: "assistant", content: "", toolCalls: [] };
     for await (const chunk of model.streamChat(
       messages,
@@ -42,9 +127,18 @@ exports.run = async function () {
     }
     assert.equal(assistant.toolCalls.length, 1);
     const call = assistant.toolCalls[0];
-    assert.equal(call.function.name, ["ls", "read_file"][called.length]);
+    assert.equal(
+      call.function.name,
+      ["ls", "read_file", "git_status"][called.length],
+    );
     called.push(call.function.name);
-    const result = await host.core.invoke("tools/call", { toolCall: call });
+    const selectedTool = tools.find(
+      (tool) => tool.function.name === call.function.name,
+    );
+    const result = await host.core.invoke("tools/call", {
+      toolCall: call,
+      toolUri: selectedTool.uri ?? null,
+    });
     assert.ok(!result.errorMessage, result.errorMessage);
     messages.push({
       role: "tool",
@@ -52,6 +146,28 @@ exports.run = async function () {
       content: result.contextItems.map((item) => item.content).join("\n"),
     });
   }
-  assert.deepEqual(called, ["ls", "read_file"]);
+  assert.deepEqual(called, ["ls", "read_file", "git_status"]);
   assert.ok(answer.includes("L42-CI-CONTINUATION"));
+  await vscode.workspace
+    .getConfiguration("continue")
+    .update("enableGitStatusTool", false, vscode.ConfigurationTarget.Global);
+  await host.configHandler.reloadConfig("git-status-disabled-smoke");
+  const { config: disabledConfig } = await host.configHandler.loadConfig();
+  assert.ok(
+    !disabledConfig.tools.some((tool) => tool.function.name === "git_status"),
+  );
+  const stale = await host.core.invoke("tools/call", {
+    toolUri: gitTool.uri ?? null,
+    toolCall: {
+      id: "disabled-git-status",
+      type: "function",
+      function: { name: "git_status", arguments: "{}" },
+    },
+  });
+  assert.equal(stale.errorMessage, undefined);
+  const disabledEnvelope = JSON.parse(stale.contextItems[0].content);
+  assert.equal(disabledEnvelope.invocationId, "disabled-git-status");
+  assert.equal(disabledEnvelope.error.code, "tool_disabled");
+  assert.equal(disabledEnvelope.complete, false);
+  assert.equal(disabledEnvelope.data, undefined);
 };

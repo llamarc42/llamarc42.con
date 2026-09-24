@@ -1,6 +1,7 @@
 import { ConfigDependentToolParams, Tool } from "..";
 import { isRecommendedAgentModel } from "../llm/toolSupport";
 import * as toolDefinitions from "./definitions";
+import { gitStatusTool } from "./gitStatus";
 
 // I'm writing these as functions because we've messed up 3 TIMES by pushing to const, causing duplicate tool definitions on subsequent config loads.
 export const getBaseToolDefinitions = () => [
@@ -20,6 +21,12 @@ export const getConfigDependentToolDefinitions = async (
 ): Promise<Tool[]> => {
   const { modelName, enableExperimentalTools, isRemote } = params;
   const tools: Tool[] = [];
+  if (
+    !isRemote &&
+    (await params.ide.getIdeSettings()).enableGitStatusTool === true
+  ) {
+    tools.push(gitStatusTool());
+  }
 
   tools.push(await toolDefinitions.requestRuleTool(params));
   tools.push(await toolDefinitions.readSkillTool(params));

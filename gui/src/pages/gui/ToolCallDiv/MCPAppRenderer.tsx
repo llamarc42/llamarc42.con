@@ -10,6 +10,7 @@ import {
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { ToolCallState } from "core";
 import { getToolNameFromMCPServer } from "core/tools/mcpToolName";
+import { mcpAppToolUri } from "core/tools/mcpToolUri";
 import { generateOpenAIToolCallId } from "core/tools/systemMessageTools/systemToolUtils";
 import { renderContextItems } from "core/util/messageContent";
 import {
@@ -207,6 +208,7 @@ export function McpAppRenderer({
 
     bridge.oncalltool = async (params: any) => {
       const output = await ideMessenger.request("tools/call", {
+        toolUri: mcpAppToolUri(toolCallState.tool?.uri, params.name),
         toolCall: {
           function: {
             name: getToolNameFromMCPServer(

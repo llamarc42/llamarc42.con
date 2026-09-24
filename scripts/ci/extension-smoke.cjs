@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const http = require("node:http");
+const { execFileSync } = require("node:child_process");
 const { runTests } = require("@vscode/test-electron");
 const AdmZip = require("adm-zip");
 
@@ -12,6 +13,13 @@ const AdmZip = require("adm-zip");
   const configDir = path.join(root, "continue");
   fs.mkdirSync(workspace);
   fs.mkdirSync(configDir);
+  execFileSync("git", ["init"], { cwd: workspace, stdio: "pipe" });
+  const userSettings = path.join(root, "user-data", "User");
+  fs.mkdirSync(userSettings, { recursive: true });
+  fs.writeFileSync(
+    path.join(userSettings, "settings.json"),
+    JSON.stringify({ "continue.enableGitStatusTool": true }),
+  );
   fs.writeFileSync(
     path.join(workspace, "README.md"),
     "Fixture token: L42-CI-CONTINUATION\n",
@@ -64,6 +72,7 @@ const AdmZip = require("adm-zip");
         response.end(JSON.stringify({ models: [{ name: "qwen3-coder:30b" }] }));
       } else if (request.url === "/api/chat") {
         assert.deepEqual(data.tools.map((tool) => tool.function.name).sort(), [
+          "git_status",
           "ls",
           "read_file",
         ]);
@@ -95,10 +104,24 @@ const AdmZip = require("adm-zip");
               },
             ],
           };
-        } else {
-          assert.equal(round, 2);
+        } else if (round === 2) {
           assert.ok(
             data.messages.at(-1).content.includes("L42-CI-CONTINUATION"),
+          );
+          message = {
+            role: "assistant",
+            content: "",
+            tool_calls: [{ function: { name: "git_status", arguments: {} } }],
+          };
+        } else {
+          assert.equal(round, 3);
+          const result = JSON.parse(data.messages.at(-1).content);
+          assert.equal(result.status, "success");
+          assert.ok(
+            result.data.entries.some(
+              (entry) =>
+                entry.path === "README.md" && entry.indexStatus === "?",
+            ),
           );
           message = { role: "assistant", content: "L42-CI-CONTINUATION" };
         }
@@ -144,11 +167,11 @@ const AdmZip = require("adm-zip");
     if (failure) throw failure;
     assert.equal(
       round,
-      3,
+      4,
       "All continuation rounds must reach the mock server",
     );
     console.log(
-      "Packaged extension activation and list/read/answer continuation passed",
+      "Packaged extension activation and list/read/git-status/answer continuation passed",
     );
   } finally {
     server.closeAllConnections();

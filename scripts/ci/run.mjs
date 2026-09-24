@@ -32,6 +32,7 @@ export function run(command, args, cwd = process.cwd(), timeout = 1200000) {
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const support = [
+  "tool-contract",
   "config-types",
   "terminal-security",
   "fetch",

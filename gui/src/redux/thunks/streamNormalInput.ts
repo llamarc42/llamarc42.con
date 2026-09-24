@@ -295,7 +295,7 @@ export const streamNormalInput = createAsyncThunk<
       dispatch(
         setToolGenerated({
           toolCallId,
-          tools: state1.config.config.tools,
+          tools: activeTools,
         }),
       );
     }

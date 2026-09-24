@@ -288,6 +288,18 @@ export default async function doLoadConfig(options: {
     }
   }
 
+  // Reserve the built-in name even while disabled, so MCP/custom tools cannot
+  // create ambiguous model calls or inherit its saved permission setting.
+  newConfig.tools = newConfig.tools.filter((tool) => {
+    if (tool.function.name !== "git_status") return true;
+    errors!.push({
+      fatal: false,
+      message:
+        'Tool "git_status" was excluded: this name is reserved for the built-in Git status tool. Rename the custom tool or MCP server to expose it under a different name.',
+    });
+    return false;
+  });
+
   newConfig.tools.push(
     ...(await getConfigDependentToolDefinitions({
       rules: newConfig.rules,
@@ -300,7 +312,7 @@ export default async function doLoadConfig(options: {
   );
 
   // Detect duplicate tool names
-  const counts: Record<string, number> = {};
+  const counts: Record<string, number> = Object.create(null);
   newConfig.tools.forEach((tool) => {
     if (counts[tool.function.name]) {
       counts[tool.function.name] = counts[tool.function.name] + 1;
@@ -313,10 +325,14 @@ export default async function doLoadConfig(options: {
     if (count > 1) {
       errors!.push({
         fatal: false,
-        message: `Duplicate (${count}) tools named "${toolName}" detected. Permissions will conflict and usage may be unpredictable`,
+        message: `Excluded all ${count} tools named "${toolName}": duplicate names cannot identify a unique handler. Rename the custom tool or MCP server.`,
       });
     }
   });
+
+  newConfig.tools = newConfig.tools.filter(
+    (tool) => counts[tool.function.name] === 1,
+  );
 
   const ruleCounts: Record<string, number> = {};
   newConfig.rules.forEach((rule) => {

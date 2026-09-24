@@ -32,6 +32,7 @@ import {
 import { resolveEditorContent } from "../../components/mainInput/TipTapEditor/utils/resolveEditorContent";
 import { MockIdeMessenger } from "../../context/MockIdeMessenger";
 import { RootState } from "../store";
+import { updateConfig } from "../slices/configSlice";
 import { getRootStateWithClaude } from "./streamResponse.test";
 
 const grepTool = serializeTool(grepSearchTool);
@@ -84,6 +85,52 @@ beforeEach(() => {
 });
 
 describe("streamResponseThunk - tool calls", () => {
+  it("keeps the offered handler identity when configuration changes during streaming", async () => {
+    const state = getRootStateWithClaude();
+    const offered = { ...grepTool, uri: "mcp://original/search" };
+    state.config.config.tools = [offered];
+    state.ui.toolSettings = { [grepName]: "allowedWithPermission" };
+    const store = createMockStore(state);
+    store.mockIdeMessenger.llmStreamChat = vi
+      .fn()
+      .mockImplementation(async function* () {
+        store.dispatch(
+          updateConfig({
+            ...state.config.config,
+            tools: [{ ...offered, uri: "mcp://replacement/search" }],
+          }),
+        );
+        yield [
+          {
+            role: "assistant",
+            content: "",
+            toolCalls: [
+              {
+                id: "snapshot-call",
+                type: "function",
+                function: { name: grepName, arguments: '{"query":"test"}' },
+              },
+            ],
+          },
+        ];
+        return {
+          prompt: "test",
+          completion: "",
+          modelProvider: "anthropic",
+          modelTitle: "test",
+        };
+      });
+    await store.dispatch(
+      streamResponseThunk({
+        editorState: mockEditorState,
+        modifiers: mockModifiers,
+      }) as any,
+    );
+    const call = (store.getState() as RootState).session.history
+      .flatMap((item) => item.toolCallStates ?? [])
+      .find((item) => item.toolCallId === "snapshot-call");
+    expect(call?.tool?.uri).toBe(offered.uri);
+  });
   it("should execute streaming flow with tool call execution", async () => {
     // Set up auto-approved tool setting for our test tool
     const initialState = getRootStateWithClaude();
@@ -406,6 +453,7 @@ describe("streamResponseThunk - tool calls", () => {
     });
 
     expect(requestSpy).toHaveBeenCalledWith("tools/call", {
+      toolUri: null,
       toolCall: {
         id: "tool-call-1",
         type: "function",
@@ -1741,6 +1789,7 @@ describe("streamResponseThunk - tool calls", () => {
 
     // Verify IDE messenger calls for tool execution
     expect(requestSpy).toHaveBeenCalledWith("tools/call", {
+      toolUri: null,
       toolCall: {
         id: "tool-approval-flow-1",
         type: "function",

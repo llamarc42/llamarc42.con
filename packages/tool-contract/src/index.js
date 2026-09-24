@@ -1,5 +1,5 @@
 import Ajv2020 from "ajv/dist/2020.js";
-import { readFileSync } from "node:fs";
+import manifestSchema from "../schema/tool-manifest.schema.json" with { type: "json" };
 
 export const LIMITS = Object.freeze({
   manifestBytes: 65536,
@@ -17,9 +17,6 @@ const makeAjv = () =>
     strictRequired: true,
   });
 const ajv = makeAjv();
-const manifestSchema = JSON.parse(
-  readFileSync(new URL("../schema/tool-manifest.schema.json", import.meta.url)),
-);
 const validateShape = ajv.compile(manifestSchema);
 
 export class ContractError extends Error {

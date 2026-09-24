@@ -4,6 +4,9 @@ import { MCPManagerSingleton } from "../context/mcp/MCPManagerSingleton";
 import { ContinueError, ContinueErrorReason } from "../util/errors";
 import { canParseUrl } from "../util/url";
 import { BuiltInToolNames } from "./builtIn";
+import { gitStatusImpl, parseGitStatusArgs } from "./gitStatus";
+import { decodeMCPToolUri } from "./mcpToolUri";
+export { decodeMCPToolUri, encodeMCPToolUri } from "./mcpToolUri";
 
 import { codebaseToolImpl } from "./implementations/codebaseTool";
 import { createNewFileImpl } from "./implementations/createNewFile";
@@ -47,21 +50,6 @@ async function callHttpTool(
   }
 
   return data.output;
-}
-
-export function encodeMCPToolUri(mcpId: string, toolName: string): string {
-  return `mcp://${encodeURIComponent(mcpId)}/${encodeURIComponent(toolName)}`;
-}
-
-export function decodeMCPToolUri(uri: string): [string, string] | null {
-  const url = new URL(uri);
-  if (url.protocol !== "mcp:") {
-    return null;
-  }
-  return [
-    decodeURIComponent(url.hostname),
-    decodeURIComponent(url.pathname).slice(1), // to remove leading '/'
-  ];
 }
 
 async function callToolFromUri(
@@ -190,6 +178,8 @@ export async function callBuiltInTool(
   extras: ToolExtras,
 ): Promise<ContextItem[]> {
   switch (functionName) {
+    case "git_status":
+      return await gitStatusImpl(args, extras);
     case BuiltInToolNames.ReadFile:
       return await readFileImpl(args, extras);
     case BuiltInToolNames.ReadFileRange:
@@ -243,7 +233,11 @@ export async function callTool(
   mcpUiState?: McpUiState;
 }> {
   try {
-    const args = safeParseToolCallArgs(toolCall);
+    // Contract tools must reject malformed JSON instead of repairing it to {}.
+    const args =
+      tool.function.name === "git_status" && !tool.uri
+        ? parseGitStatusArgs(toolCall.function.arguments)
+        : safeParseToolCallArgs(toolCall);
     const { contextItems, mcpUiState } = tool.uri
       ? await callToolFromUri(tool.uri, args, extras)
       : {

@@ -8,7 +8,11 @@ test("searchWeb tool is always available", async () => {
     enableExperimentalTools: false,
     isRemote: false,
     modelName: "",
-    ide: {} as any,
+    ide: {
+      getIdeSettings: async () => ({}),
+      getWorkspaceDirs: async () => [],
+      fileExists: async () => false,
+    } as any,
   });
 
   const searchWebTool = tools.find(

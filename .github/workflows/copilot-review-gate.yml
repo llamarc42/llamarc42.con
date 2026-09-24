@@ -7,7 +7,10 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_run:
-    workflows: [Copilot, Running Copilot Code Review, Review metadata changed]
+    # Normal CI supplies an independent refresh when Copilot-originated events
+    # are held for approval. Keep manual dispatch and scheduled reconciliation.
+    workflows:
+      [Fork CI, Copilot, Running Copilot Code Review, Review metadata changed]
     types: [completed]
   workflow_dispatch:
 

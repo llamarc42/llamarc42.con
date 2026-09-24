@@ -265,7 +265,9 @@ test("review changes relay to trusted metadata code without credentials", () => 
   assert.ok(relay.on.pull_request_review.types.includes("dismissed"));
   assert.ok(relay.on.pull_request_review.types.includes("submitted"));
   assert.ok(gate.on.workflow_run.workflows.includes(relay.name));
+  assert.ok(gate.on.workflow_run.workflows.includes("Fork CI"));
   assert.ok(gate.on.workflow_run.types.includes("completed"));
+  assert.ok(Object.hasOwn(gate.on, "workflow_dispatch"));
   assert.equal(gate.on.pull_request_review, undefined);
   assert.equal(
     gate.jobs.review.steps[0].with.ref,

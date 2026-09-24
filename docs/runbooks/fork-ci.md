@@ -120,7 +120,7 @@ not run from unmerged PR code, so it will become operational only after its trus
 default-branch bootstrap. For that initial PR, verify Copilot's current-head review
 directly before requesting a merge. Do not manufacture a passing review status.
 
-Once bootstrapped, review metadata is refreshed after the Copilot workflow, PR
+Once bootstrapped, review metadata is refreshed after Fork CI and the Copilot workflow, PR
 head changes, review submissions/edits/dismissals, review comments, manual dispatch,
 and a five-minute scheduled check. Review events run a credential-free relay;
 its completion triggers the trusted default-branch gate, which independently
@@ -129,6 +129,26 @@ event processing and scheduled runs; thread-resolution changes also rely on the
 scheduled fallback. Always recheck live review metadata immediately before an
 authorized merge. Event-driven refresh reduces latency; it is not an atomic merge
 interlock against concurrent review changes.
+
+Copilot-originated refresh workflows can be held with `action_required` before
+any job starts. A five-minute schedule is not a five-minute service guarantee:
+scheduled runs have been observed hours apart in this fork. The independent
+Fork CI completion trigger helps refresh review state after ordinary CI even if
+the Copilot event path is held. It takes effect only after this workflow change
+is merged to the trusted default branch. It does not request another review or
+weaken the review decision.
+
+If the displayed status is stale after review or conversation resolution, run the
+existing trusted gate explicitly:
+
+```text
+gh workflow run copilot-review-gate.yml --repo llamarc42/llamarc42.con --ref main
+```
+
+Check that the dispatched run succeeds and inspect the updated status description.
+It may correctly remain pending for unresolved findings. This refresh grants no
+merge approval, does not approve other workflows, and does not change repository
+approval settings. The live merge guard below remains mandatory.
 
 Commit statuses have no expiry. If GitHub's API cannot list PRs or write statuses,
 a previously published success can remain visible even though the refresh job
