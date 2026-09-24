@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import {
   access,
+  lstat,
   mkdir,
   mkdtemp,
   open,
@@ -250,7 +251,7 @@ function statusConfig(buffer) {
 
 async function checkMetadataType(source, directory = false) {
   try {
-    const info = await stat(source);
+    const info = await lstat(source);
     if (directory ? !info.isDirectory() : !info.isFile())
       throw unsupported(
         "Repository metadata path has an unsupported file type",
@@ -264,18 +265,67 @@ async function checkMetadataType(source, directory = false) {
   }
 }
 
-async function copyOptional(source, destination, maximum, check) {
+// Snapshot every component below the repository's declared metadata directory.
+// Linked worktrees may declare a directory outside the workspace, but links
+// inside that directory must not redirect an optional file to another target.
+async function metadataIdentity(source, root) {
+  const relative = path.relative(root, source);
+  if (
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  )
+    throw unsupported("Metadata path is outside its repository directory");
+  const components = [root];
+  for (const segment of relative.split(path.sep).filter(Boolean))
+    components.push(path.join(components.at(-1), segment));
+  const identities = [];
+  for (const [index, component] of components.entries()) {
+    let info;
+    try {
+      info = await lstat(component, { bigint: true });
+    } catch (error) {
+      if (error.code === "ENOENT" && index > 0) return undefined;
+      throw error;
+    }
+    if (
+      info.isSymbolicLink() ||
+      (index < components.length - 1 ? !info.isDirectory() : !info.isFile())
+    )
+      throw unsupported(
+        "Symlinked or non-regular repository metadata is unsupported",
+      );
+    identities.push([info.dev, info.ino]);
+  }
+  return identities;
+}
+
+async function copyOptional(source, destination, maximum, check, root) {
   let input;
   let output;
   try {
-    // Check types before OS-specific open errors can obscure unsupported paths.
-    await checkMetadataType(path.dirname(source), true);
-    await checkMetadataType(source);
+    const before = await metadataIdentity(source, root);
+    if (!before) return;
     input = await open(
       source,
-      constants.O_RDONLY | (constants.O_NONBLOCK || 0),
+      constants.O_RDONLY |
+        (constants.O_NONBLOCK || 0) |
+        (constants.O_NOFOLLOW || 0),
     );
-    const info = await input.stat();
+    const info = await input.stat({ bigint: true });
+    const after = await metadataIdentity(source, root);
+    const expected = before.at(-1);
+    if (
+      !after ||
+      after.length !== before.length ||
+      after.some(
+        (identity, i) =>
+          identity[0] !== before[i][0] || identity[1] !== before[i][1],
+      ) ||
+      info.dev !== expected[0] ||
+      info.ino !== expected[1]
+    )
+      throw unsupported("Repository metadata changed while opening it");
     if (!info.isFile() || info.size > maximum)
       throw unsupported(
         "Repository metadata is not a regular file within the supported size limit",
@@ -299,11 +349,11 @@ async function copyOptional(source, destination, maximum, check) {
       await output.writeFile(buffer.subarray(0, bytesRead));
     }
   } catch (error) {
-    if (error.code === "ENOTDIR" || error.code === "EISDIR")
+    if (["ENOTDIR", "EISDIR", "ELOOP", "ENOENT"].includes(error.code))
       throw unsupported(
         "Repository metadata path has an unsupported file type",
       );
-    if (error.code !== "ENOENT") throw error;
+    throw error;
   } finally {
     await input?.close();
     await output?.close();
@@ -456,18 +506,21 @@ export async function statusBytes(workspace, limits, signal) {
       path.join(gitDir, "index"),
       128 * 1024 * 1024,
       check,
+      directories[1],
     );
     await copyOptional(
       paths[2],
       path.join(gitDir, "info", "exclude"),
       limits.maxOutputBytes,
       check,
+      directories[0],
     );
     await copyOptional(
       paths[3],
       path.join(gitDir, "info", "attributes"),
       limits.maxOutputBytes,
       check,
+      directories[0],
     );
     check();
     return await run(

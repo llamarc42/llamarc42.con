@@ -844,12 +844,12 @@ export const sessionSlice = createSlice({
       if (toolCallState) {
         toolCallState.status = "generated";
 
-        const tool = action.payload.tools.find(
+        const tools = action.payload.tools.filter(
           (t) => t.function.name === toolCallState.toolCall.function.name,
         );
-        if (tool) {
-          toolCallState.tool = tool;
-        }
+        // Names are the only identity returned by the model. Never guess when
+        // its request contained ambiguous definitions, or retain stale identity.
+        toolCallState.tool = tools.length === 1 ? tools[0] : undefined;
       }
     },
     updateToolCallOutput: (

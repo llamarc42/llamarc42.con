@@ -108,6 +108,35 @@ const mockIde = {
 const mockLlmLogger = {} as any;
 
 describe("doLoadConfig pre-read content bypass", () => {
+  it("excludes every colliding local/HTTP/MCP definition while retaining unique names", async () => {
+    const unique = { function: { name: "unique" } };
+    mockLoadJson.mockResolvedValueOnce({
+      config: {
+        ...stubConfig,
+        tools: [
+          { function: { name: "collision" } },
+          { function: { name: "collision" }, uri: "https://example.test/tool" },
+          { function: { name: "collision" }, uri: "mcp://server/tool" },
+          unique,
+        ],
+      },
+      errors: [],
+      configLoadInterrupted: false,
+    });
+    const result = await doLoadConfig({
+      ide: mockIde,
+      llmLogger: mockLlmLogger,
+      profileId: "test-profile",
+      packageIdentifier: { uriType: "file", fileUri: "test.yaml" },
+    });
+    expect(result.config?.tools).toEqual([unique]);
+    expect(result.errors).toContainEqual({
+      fatal: false,
+      message: expect.stringContaining(
+        'Excluded all 3 tools named "collision"',
+      ),
+    });
+  });
   it("excludes external git_status names even when the built-in is disabled", async () => {
     mockLoadJson.mockResolvedValueOnce({
       config: {

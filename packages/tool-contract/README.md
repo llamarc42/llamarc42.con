@@ -60,6 +60,12 @@ settings service returns `tool_failed` without accessing the workspace. Metadata
 files with unsupported types, including a file in place of the metadata parent
 directory, return `unsupported_repository` on every supported OS. Missing
 optional metadata remains allowed; opened files are checked again before copying.
+Metadata files and directory components below the declared Git directory must
+not be symlinks (including Windows junctions). Copies use no-follow opens where
+available and compare the opened file's device/inode identity with snapshots of
+the path components before any bytes are read. A replacement during opening
+returns `unsupported_repository`, including when the original path is restored.
+Declared linked-worktree metadata directories remain supported.
 
 `git_status` is reserved for the built-in, including while disabled. Conflicting
 MCP/custom tools are excluded with a configuration warning; rename the MCP server
@@ -73,6 +79,10 @@ tools. All calls without saved identity are rejected instead of selecting a
 same-name local, HTTP, or MCP tool. Git metadata records preserve trailing
 path whitespace; invalid UTF-8 and ambiguous newline-delimited paths are rejected
 as `unsupported_repository` rather than decoded into a different path.
+All duplicate tool names are excluded during configuration loading with a warning;
+no first-match handler is selected. Calls capture identity from the active tools
+offered in that model request, so a configuration reload during streaming cannot
+assign a replacement handler to the generated call.
 
 Enabling a registry entry is not user approval to run it. This integration uses
 the existing Continue approval flow; it does not yet implement the design's

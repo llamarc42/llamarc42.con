@@ -9,6 +9,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   utimesSync,
@@ -16,6 +17,7 @@ import {
 } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { realpath } from "node:fs/promises";
+import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -148,6 +150,92 @@ function modified(workspace) {
   writeFileSync(file, "modified\n");
   const later = new Date(Date.now() + 5000);
   utimesSync(file, later, later);
+}
+
+test("a symlinked metadata directory cannot import external ignore rules", async (t) => {
+  const { root, workspace, invoke } = fixture(t);
+  const info = path.join(workspace, ".git", "info");
+  renameSync(info, path.join(root, "original-info"));
+  const external = path.join(root, "external-info");
+  mkdirSync(external);
+  writeFileSync(path.join(external, "exclude"), "external-secret\n");
+  symlinkSync(
+    external,
+    info,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  assert.equal((await invoke()).error?.code, "unsupported_repository");
+});
+
+for (const leaf of ["index", "info/exclude", "info/attributes"]) {
+  test(`no-follow metadata check rejects a symlinked ${leaf}`, async (t) => {
+    const { workspace, invoke } = fixture(t);
+    const source = path.join(await realpath(workspace), ".git", leaf);
+    // File symlink creation requires privileges on Windows. Inject the lstat
+    // result on all OSes; real directory links and real descriptor swaps below
+    // cover traversal and copying without weakening this regression on Windows.
+    const nativeLstat = fsp.lstat;
+    fsp.lstat = async (file, options) => {
+      if (path.relative(source, path.resolve(file)) === "")
+        return {
+          isSymbolicLink: () => true,
+          isFile: () => false,
+          isDirectory: () => false,
+        };
+      return nativeLstat(file, options);
+    };
+    syncBuiltinESMExports();
+    t.after(() => {
+      fsp.lstat = nativeLstat;
+      syncBuiltinESMExports();
+    });
+    assert.equal((await invoke()).error?.code, "unsupported_repository");
+  });
+}
+
+for (const restoreBeforeCheck of [false, true]) {
+  test(`metadata replacement during open is rejected (restore=${restoreBeforeCheck})`, async (t) => {
+    const { root, workspace, invoke } = fixture(t);
+    const source = path.join(
+      await realpath(workspace),
+      ".git",
+      "info",
+      "exclude",
+    );
+    writeFileSync(source, "original\n");
+    const backup = path.join(root, "saved-exclude");
+    const replacement = path.join(root, "external-exclude");
+    writeFileSync(replacement, "external-secret\n");
+    const nativeOpen = fsp.open;
+    let intercepted = false;
+    let readExternal = false;
+    fsp.open = async (file, ...args) => {
+      if (path.relative(source, path.resolve(file)) !== "")
+        return nativeOpen(file, ...args);
+      intercepted = true;
+      renameSync(source, backup);
+      renameSync(replacement, source);
+      const descriptor = await nativeOpen(file, ...args);
+      const nativeRead = descriptor.read.bind(descriptor);
+      descriptor.read = (...readArgs) => {
+        readExternal = true;
+        return nativeRead(...readArgs);
+      };
+      if (restoreBeforeCheck) {
+        renameSync(source, replacement);
+        renameSync(backup, source);
+      }
+      return descriptor;
+    };
+    syncBuiltinESMExports();
+    t.after(() => {
+      fsp.open = nativeOpen;
+      syncBuiltinESMExports();
+    });
+    assert.equal((await invoke()).error?.code, "unsupported_repository");
+    assert.equal(intercepted, true);
+    assert.equal(readExternal, false);
+  });
 }
 
 test("repository executables, relative PATH entries, and external links into the checkout cannot select Git", async (t) => {
